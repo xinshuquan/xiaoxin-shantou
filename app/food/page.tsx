@@ -26,17 +26,51 @@ export default function FoodPage() {
   const categories_list = ['全部', '潮汕菜', '火锅', '烧烤', '小吃', '甜品', '快餐'];
   const [adminData, setAdminData] = useState<AdminItem[]>([]);
   const [isClient, setIsClient] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // Function to load data
+  const loadData = () => {
+    try {
+      const allData = JSON.parse(localStorage.getItem('adminData') || '{}');
+      const foodItems = allData['food'] || [];
+      setAdminData(foodItems);
+      setIsClient(true);
+    } catch (e) {
+      console.error('Error loading data:', e);
+    }
+  };
 
   useEffect(() => {
-    setIsClient(true);
-    // Load admin data from localStorage
-    const allData = JSON.parse(localStorage.getItem('adminData') || '{}');
-    const foodItems = allData['food'] || [];
-    setAdminData(foodItems);
+    loadData();
+    
+    // Listen for storage changes (when admin saves data in same browser)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'adminData' || e.key === 'publicData') {
+        loadData();
+      }
+    };
+    
+    // Listen for custom event (when admin saves in same window)
+    const handleDataUpdate = () => {
+      loadData();
+      setRefreshKey(k => k + 1);
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('adminDataUpdate', handleDataUpdate);
+    
+    // Poll for updates every 2 seconds
+    const interval = setInterval(loadData, 2000);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('adminDataUpdate', handleDataUpdate);
+      clearInterval(interval);
+    };
   }, []);
 
   // Combine default data with admin data
-  const allFoodData = isClient ? [
+  const allFoodData = [
     ...adminData.map((item) => ({
       id: `admin-${item.id}`,
       name: item.data.name,
@@ -54,7 +88,7 @@ export default function FoodPage() {
       isAdminAdded: true,
     })),
     ...foodData.map(item => ({ ...item, isAdminAdded: false })),
-  ] : foodData.map(item => ({ ...item, isAdminAdded: false }));
+  ];
 
   return (
     <div className="min-h-screen bg-[#0A0A0A]">
@@ -88,10 +122,16 @@ export default function FoodPage() {
       </div>
 
       {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-4 py-8" key={refreshKey}>
         {isClient && adminData.length > 0 && (
-          <div className="mb-4 p-3 bg-[#FFD700]/10 border border-[#FFD700]/30 rounded-xl">
+          <div className="mb-4 p-3 bg-[#FFD700]/10 border border-[#FFD700]/30 rounded-xl flex items-center justify-between">
             <span className="text-[#FFD700] text-sm">后台新增了 {adminData.length} 条内容</span>
+            <button 
+              onClick={loadData}
+              className="text-[#FFD700] text-sm hover:underline"
+            >
+              刷新
+            </button>
           </div>
         )}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">

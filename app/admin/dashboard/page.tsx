@@ -239,6 +239,9 @@ export default function AdminDashboard() {
     
     // Also save to a public key that can be read by frontend
     localStorage.setItem('publicData', JSON.stringify(allData));
+    
+    // Dispatch custom event to notify other pages
+    window.dispatchEvent(new Event('adminDataUpdate'));
 
     await new Promise(resolve => setTimeout(resolve, 1000));
 
