@@ -149,6 +149,48 @@ body {
   animation: blur-move 5s ease-in-out infinite;
 }
 
+/* 潮字不规则移动 - 左上右下 */
+@keyframes chaoshan-move-1 {
+  0%, 100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(8px, -5px);
+  }
+  50% {
+    transform: translate(-3px, 8px);
+  }
+  75% {
+    transform: translate(-8px, -3px);
+  }
+}
+
+/* 汕字不规则移动 - 右上左下 */
+@keyframes chaoshan-move-2 {
+  0%, 100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(-6px, 6px);
+  }
+  50% {
+    transform: translate(5px, -8px);
+  }
+  75% {
+    transform: translate(3px, 5px);
+  }
+}
+
+/* 灯笼发光动画 */
+@keyframes lantern-glow {
+  0%, 100% {
+    box-shadow: 0 0 30px rgba(220, 20, 60, 0.6), 0 0 60px rgba(220, 20, 60, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 50px rgba(220, 20, 60, 0.8), 0 0 80px rgba(255, 100, 100, 0.5);
+  }
+}
+
 /* 金色文字 */
 .text-gold {
   color: var(--primary);

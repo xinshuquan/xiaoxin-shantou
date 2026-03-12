@@ -78,7 +78,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Yellow Banner with 潮 and 汕 */}
+      {/* Yellow Banner with Lanterns and 潮汕 */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-[#FFD700] via-[#FFC107] to-[#FFD700]"></div>
         
@@ -88,34 +88,74 @@ export default function HomePage() {
           <div className="absolute bottom-0 right-0 w-96 h-96 bg-white rounded-full blur-3xl"></div>
         </div>
         
-        {/* 潮字 - 左偏上 */}
-        <div className="absolute left-[5%] top-[10%] opacity-30">
-          <span 
-            className="font-calligraphy text-[200px] md:text-[300px] text-[#0D0D0D] opacity-40 animate-float"
-            style={{ 
-              filter: 'blur(2px)',
-              transform: 'rotate(-15deg)'
-            }}
-          >
-            潮
-          </span>
+        {/* Left Red Lantern with Glow */}
+        <div className="absolute left-[2%] top-1/2 -translate-y-1/2 z-20">
+          <div className="relative">
+            {/* Glow effect */}
+            <div className="absolute inset-0 w-32 h-40 bg-red-500 rounded-full blur-[40px] opacity-60 animate-pulse"></div>
+            <div className="absolute inset-0 w-32 h-40 bg-red-400 rounded-full blur-[60px] opacity-40 animate-pulse" style={{ animationDelay: '0.5s' }}></div>
+            {/* Lantern */}
+            <div className="relative w-28 h-36 bg-gradient-to-b from-[#DC143C] to-[#8B0000] rounded-2xl flex items-center justify-center animate-float" style={{ boxShadow: '0 0 30px rgba(220,20,60,0.6)' }}>
+              {/* Lantern top */}
+              <div className="absolute -top-3 w-8 h-4 bg-[#FFD700] rounded-full"></div>
+              {/* Lantern bottom */}
+              <div className="absolute -bottom-3 w-8 h-4 bg-[#FFD700] rounded-full"></div>
+              {/* Fringe */}
+              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-16 h-8 bg-red-700/50 rounded-b-lg"></div>
+              <span className="text-4xl">🏮</span>
+            </div>
+          </div>
         </div>
         
-        {/* 汕字 - 右偏下 */}
-        <div className="absolute right-[5%] bottom-[10%] opacity-30">
-          <span 
-            className="font-calligraphy text-[200px] md:text-[300px] text-[#0D0D0D] opacity-40 animate-float"
-            style={{ 
-              filter: 'blur(2px)',
-              transform: 'rotate(15deg)'
-            }}
-          >
-            汕
-          </span>
+        {/* Right Red Lantern with Glow */}
+        <div className="absolute right-[2%] top-1/2 -translate-y-1/2 z-20">
+          <div className="relative">
+            {/* Glow effect */}
+            <div className="absolute inset-0 w-32 h-40 bg-red-500 rounded-full blur-[40px] opacity-60 animate-pulse" style={{ animationDelay: '0.3s' }}></div>
+            <div className="absolute inset-0 w-32 h-40 bg-red-400 rounded-full blur-[60px] opacity-40 animate-pulse" style={{ animationDelay: '0.8s' }}></div>
+            {/* Lantern */}
+            <div className="relative w-28 h-36 bg-gradient-to-b from-[#DC143C] to-[#8B0000] rounded-2xl flex items-center justify-center animate-float" style={{ animationDelay: '0.5s', boxShadow: '0 0 30px rgba(220,20,60,0.6)' }}>
+              {/* Lantern top */}
+              <div className="absolute -top-3 w-8 h-4 bg-[#FFD700] rounded-full"></div>
+              {/* Lantern bottom */}
+              <div className="absolute -bottom-3 w-8 h-4 bg-[#FFD700] rounded-full"></div>
+              {/* Fringe */}
+              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-16 h-8 bg-red-700/50 rounded-b-lg"></div>
+              <span className="text-4xl">🏮</span>
+            </div>
+          </div>
+        </div>
+        
+        {/* 潮字 - Top Left with Gold Background */}
+        <div className="absolute left-[8%] top-4 z-30">
+          <div className="bg-gradient-to-r from-[#D4AF37] to-[#FFD700] px-6 py-3 rounded-xl" style={{ boxShadow: '0 0 20px rgba(255,215,0,0.5)' }}>
+            <span 
+              className="font-calligraphy text-5xl md:text-6xl text-[#0D0D0D]"
+              style={{ 
+                animation: 'chaoshan-move-1 3s ease-in-out infinite'
+              }}
+            >
+              潮
+            </span>
+          </div>
+        </div>
+        
+        {/* 汕字 - Top Right with Gold Background */}
+        <div className="absolute right-[8%] top-4 z-30">
+          <div className="bg-gradient-to-r from-[#D4AF37] to-[#FFD700] px-6 py-3 rounded-xl" style={{ boxShadow: '0 0 20px rgba(255,215,0,0.5)' }}>
+            <span 
+              className="font-calligraphy text-5xl md:text-6xl text-[#0D0D0D]"
+              style={{ 
+                animation: 'chaoshan-move-2 3s ease-in-out infinite'
+              }}
+            >
+              汕
+            </span>
+          </div>
         </div>
         
         {/* Center content */}
-        <div className="relative z-10 max-w-7xl mx-auto px-4 py-16 text-center">
+        <div className="relative z-10 max-w-7xl mx-auto px-4 py-20 text-center">
           <h2 className="text-4xl md:text-5xl font-bold text-[#0D0D0D] mb-4 font-calligraphy">
             潮汕文化，魅力无限
           </h2>
@@ -142,17 +182,9 @@ export default function HomePage() {
               style={{ animationDelay: `${index * 0.1}s` }}
             >
               <div
-                className="w-20 h-20 mx-auto rounded-full overflow-hidden mb-4 border-3 border-[#FFD700] shadow-[0_0_15px_rgba(255,215,0,0.3)] group-hover:scale-110 transition-transform duration-300"
+                className="w-20 h-20 mx-auto rounded-full flex items-center justify-center text-5xl mb-4 bg-[#1F1F1F] border-2 border-[#FFD700] shadow-[0_0_15px_rgba(255,215,0,0.3)] group-hover:scale-110 transition-transform duration-300"
               >
-                <img 
-                  src={category.id === 'food' ? 'https://picx.zhimg.com/80/3eca5d11jw1f2qo4kjy1ej20dw0q0e1.jpg' :
-                       category.id === 'nightlife' ? 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=200' :
-                       category.id === 'stay' ? 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=200' :
-                       category.id === 'travel' ? 'https://images.unsplash.com/photo-1534239691585-204547f496b2?w=200' :
-                       'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=200'}
-                  alt={category.name}
-                  className="w-full h-full object-cover"
-                />
+                {category.icon}
               </div>
               <h3 className="font-bold text-[#FFD700] text-center mb-1 font-calligraphy text-lg">{category.name}</h3>
               <p className="text-xs text-[#8B7355] text-center">{category.description}</p>
