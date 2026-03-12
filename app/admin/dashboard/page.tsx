@@ -152,20 +152,25 @@ export default function AdminDashboard() {
           // Try Vercel Blob upload first
           let videoUrl = '';
           try {
+            console.log('Starting upload to Vercel Blob:', file.name, file.size);
             const blob = await upload(file.name, file, {
               access: 'public',
               handleUploadUrl: '/api/upload',
             });
+            console.log('Upload result:', blob);
             videoUrl = blob.url;
             setSaveStatus('✓ 视频上传成功（云端存储）');
           } catch (blobError: any) {
-            console.warn('Vercel Blob upload failed, using fallback:', blobError);
+            console.error('Vercel Blob upload failed:', blobError);
+            // Show more detailed error
+            const errorMsg = blobError?.message || blobError?.toString() || '未知错误';
+            alert(`云端上传失败: ${errorMsg}\n\n将使用本地存储（可能保存失败）`);
             // Fallback: convert to base64 for small videos only
             if (file.size > 8 * 1024 * 1024) {
-              alert(`云存储未配置，8MB以上的视频无法上传。当前: ${(file.size/1024/1024).toFixed(1)}MB\n\n请在 Vercel 控制台创建 Blob Store。`);
+              alert(`本地存储无法保存大于8MB的视频。当前: ${(file.size/1024/1024).toFixed(1)}MB`);
               continue;
             }
-            setSaveStatus('⚠ 云存储未配置，视频将存本地（可能保存失败）');
+            setSaveStatus('⚠ 云存储失败，使用本地存储');
             videoUrl = await new Promise<string>((resolve) => {
               const reader = new FileReader();
               reader.onload = (ev) => resolve(ev.target?.result as string);

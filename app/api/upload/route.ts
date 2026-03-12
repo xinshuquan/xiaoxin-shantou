@@ -7,7 +7,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     
     const blob = await handleUpload({
       request,
-      body: body,
+      body,
       onBeforeGenerateToken: async (pathname) => {
         // Configure the upload - allow video files up to 100MB
         return {
