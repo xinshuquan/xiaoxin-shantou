@@ -63,12 +63,16 @@
 body {
   background: var(--background);
   color: var(--text-primary);
-  font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  font-family: "Noto Serif SC", "Microsoft YaHei", serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* 自定义字体 */
+/* 艺术字体 - 用于标题 */
+.font-art {
+  font-family: "Ma Shan Zheng", "ZCOOL KuaiLe", cursive;
+}
+
 .font-serif {
   font-family: "Noto Serif SC", "SimSun", serif;
 }
@@ -117,25 +121,29 @@ body {
   background: var(--primary);
 }
 
-/* 动画效果 */
+/* ==================== 酷炫动画效果 ==================== */
+
+/* 浮动动画 */
 @keyframes float {
   0%, 100% {
     transform: translateY(0);
   }
   50% {
-    transform: translateY(-10px);
+    transform: translateY(-15px);
   }
 }
 
+/* 脉冲发光 */
 @keyframes pulse-glow {
   0%, 100% {
     box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
   }
   50% {
-    box-shadow: 0 0 40px rgba(255, 215, 0, 0.6);
+    box-shadow: 0 0 50px rgba(255, 215, 0, 0.6);
   }
 }
 
+/* 闪烁动画 */
 @keyframes shimmer {
   0% {
     background-position: -200% center;
@@ -145,6 +153,108 @@ body {
   }
 }
 
+/* 旋转光晕 */
+@keyframes rotate-glow {
+  0% {
+    transform: rotate(0deg);
+    filter: hue-rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+    filter: hue-rotate(30deg);
+  }
+}
+
+/* 震动效果 */
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  10%, 30%, 50%, 70%, 90% {
+    transform: translateX(-5px);
+  }
+  20%, 40%, 60%, 80% {
+    transform: translateX(5px);
+  }
+}
+
+/* 轻微抖动 */
+@keyframes wobble {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(-3deg);
+  }
+  75% {
+    transform: rotate(3deg);
+  }
+}
+
+/* 渐变背景动画 */
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* 呼吸效果 */
+@keyframes breathe {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* 星空闪烁 */
+@keyframes twinkle {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.8);
+  }
+}
+
+/* 浮动粒子 */
+@keyframes particle-float {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-100vh) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+/* 边框流光 */
+@keyframes border-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+/* 应用动画 */
 .animate-float {
   animation: float 3s ease-in-out infinite;
 }
@@ -159,6 +269,42 @@ body {
   background-size: 200% auto;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+}
+
+.animate-rotate-glow {
+  animation: rotate-glow 8s linear infinite;
+}
+
+.animate-shake {
+  animation: shake 0.5s ease-in-out;
+}
+
+.animate-wobble {
+  animation: wobble 1s ease-in-out infinite;
+}
+
+.animate-gradient {
+  background: linear-gradient(-45deg, #FFD700, #D4AF37, #B8860B, #FFD700);
+  background-size: 400% 400%;
+  animation: gradient-shift 5s ease infinite;
+}
+
+.animate-breathe {
+  animation: breathe 3s ease-in-out infinite;
+}
+
+.animate-twinkle {
+  animation: twinkle 2s ease-in-out infinite;
+}
+
+/* 悬浮时抖动 */
+.hover-shake:hover {
+  animation: shake 0.5s ease-in-out;
+}
+
+/* 悬浮时发光 */
+.hover-glow:hover {
+  box-shadow: 0 0 30px rgba(255, 215, 0, 0.4);
 }
 
 /* 卡片悬浮效果 */
@@ -184,9 +330,23 @@ body {
   background: linear-gradient(135deg, rgba(255, 215, 0, 0.1) 0%, rgba(212, 175, 55, 0.05) 100%);
 }
 
+.bg-gradient-animate {
+  background: linear-gradient(-45deg, #0A0A0A, #1A1A1A, #0D0D0D, #141414);
+  background-size: 400% 400%;
+  animation: gradient-shift 15s ease infinite;
+}
+
 /* 金色边框 */
 .border-gold {
   border-color: var(--primary-dark);
+}
+
+.border-gold-glow {
+  border: 2px solid transparent;
+  background: linear-gradient(var(--surface), var(--surface)) padding-box,
+              linear-gradient(135deg, #FFD700, #D4AF37, #FFD700) border-box;
+  animation: border-flow 3s linear infinite;
+  background-size: 200% 200%;
 }
 
 /* 金色按钮 */
@@ -197,7 +357,8 @@ body {
 }
 
 .btn-gold:hover {
-  box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+  box-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+  transform: scale(1.05);
 }
 
 /* 金色装饰线 */
@@ -215,4 +376,34 @@ body {
 .dark-card:hover {
   border-color: var(--primary-dark);
   box-shadow: 0 0 20px rgba(255, 215, 0, 0.1);
+}
+
+/* 玻璃拟态效果 */
+.glass {
+  background: rgba(20, 20, 20, 0.8);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 215, 0, 0.2);
+}
+
+/* 发光文字 */
+.glow-text {
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.5),
+               0 0 20px rgba(255, 215, 0, 0.3),
+               0 0 30px rgba(255, 215, 0, 0.2);
+}
+
+/* 脉冲圆点 */
+.pulse-dot {
+  position: relative;
+}
+
+.pulse-dot::before {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: rgba(255, 215, 0, 0.4);
+  animation: pulse-glow 2s ease-out infinite;
+  z-index: -1;
 }
