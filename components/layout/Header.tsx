@@ -9,22 +9,21 @@ export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const mainCategories = categories.slice(0, 8);
-  const userCategories = categories.slice(8);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm border-b border-[#E8E8E8]">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-[#0D0D0D]/95 backdrop-blur-sm border-b border-[#2D2D2D]">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center justify-between h-[72px]">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#FF6B35] to-[#E55A2B] flex items-center justify-center text-white text-2xl font-bold shadow-lg group-hover:scale-105 transition-transform">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#FFD700] to-[#D4AF37] flex items-center justify-center text-[#0D0D0D] text-2xl font-bold shadow-lg group-hover:scale-105 transition-transform">
               新
             </div>
             <div className="hidden sm:block">
-              <h1 className="text-lg font-bold text-[#2D3436] leading-tight font-serif">
+              <h1 className="text-lg font-bold text-[#FFD700] leading-tight font-serif">
                 小新带你游汕头
               </h1>
-              <p className="text-xs text-[#636E72]">吃喝玩乐不用愁</p>
+              <p className="text-xs text-[#8B7355]">吃喝玩乐不用愁</p>
             </div>
           </Link>
 
@@ -39,7 +38,7 @@ export default function Header() {
               >
                 <Link
                   href={`/${category.id}`}
-                  className="flex items-center gap-1 px-4 py-2 rounded-lg text-[#2D3436] hover:bg-[#FFF5F0] hover:text-[#FF6B35] transition-colors font-medium"
+                  className="flex items-center gap-1 px-4 py-2 rounded-lg text-[#C9A227] hover:bg-[#1F1F1F] hover:text-[#FFD700] transition-colors font-medium"
                 >
                   <span>{category.icon}</span>
                   <span className="text-sm">{category.name}</span>
@@ -47,22 +46,22 @@ export default function Header() {
                 
                 {/* Dropdown */}
                 {activeDropdown === category.id && (
-                  <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-xl shadow-xl border border-[#E8E8E8] py-2 animate-in fade-in slide-in-from-top-2">
+                  <div className="absolute top-full left-0 mt-1 w-48 bg-[#141414] rounded-xl shadow-xl border border-[#2D2D2D] py-2 animate-in fade-in slide-in-from-top-2">
                     <Link
                       href={`/${category.id}`}
-                      className="block px-4 py-2 text-sm text-[#636E72] hover:bg-[#FFF5F0] hover:text-[#FF6B35]"
+                      className="block px-4 py-2 text-sm text-[#8B7355] hover:bg-[#1F1F1F] hover:text-[#FFD700]"
                     >
                       查看全部
                     </Link>
                     <Link
                       href={`/${category.id}?sort=popular`}
-                      className="block px-4 py-2 text-sm text-[#636E72] hover:bg-[#FFF5F0] hover:text-[#FF6B35]"
+                      className="block px-4 py-2 text-sm text-[#8B7355] hover:bg-[#1F1F1F] hover:text-[#FFD700]"
                     >
                       热门推荐
                     </Link>
                     <Link
                       href={`/${category.id}?sort=nearby`}
-                      className="block px-4 py-2 text-sm text-[#636E72] hover:bg-[#FFF5F0] hover:text-[#FF6B35]"
+                      className="block px-4 py-2 text-sm text-[#8B7355] hover:bg-[#1F1F1F] hover:text-[#FFD700]"
                     >
                       附近推荐
                     </Link>
@@ -80,9 +79,9 @@ export default function Header() {
                 <input
                   type="text"
                   placeholder="搜索汕头美食..."
-                  className="w-48 lg:w-64 h-10 pl-10 pr-4 rounded-full bg-[#F5F5F5] border border-transparent focus:border-[#FF6B35] focus:bg-white outline-none transition-all text-sm"
+                  className="w-48 lg:w-64 h-10 pl-10 pr-4 rounded-full bg-[#1F1F1F] border border-[#3D3D3D] focus:border-[#FFD700] focus:bg-[#141414] outline-none transition-all text-sm text-[#FFD700] placeholder-[#8B7355]"
                 />
-                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#636E72]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#FFD700]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
               </div>
@@ -92,16 +91,16 @@ export default function Header() {
             <div className="flex items-center gap-2">
               <Link
                 href="/orders"
-                className="p-2 rounded-full hover:bg-[#F5F5F5] transition-colors"
+                className="p-2 rounded-full hover:bg-[#1F1F1F] transition-colors"
               >
-                <svg className="w-6 h-6 text-[#636E72]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 text-[#FFD700]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                 </svg>
               </Link>
               
               <Link
                 href="/orders"
-                className="hidden sm:flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#FF6B35] to-[#E55A2B] text-white rounded-full text-sm font-medium hover:shadow-lg hover:scale-105 transition-all"
+                className="hidden sm:flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#FFD700] to-[#D4AF37] text-[#0D0D0D] rounded-full text-sm font-bold hover:shadow-[0_0_20px_rgba(255,215,0,0.4)] hover:scale-105 transition-all"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -112,9 +111,9 @@ export default function Header() {
               {/* Mobile Menu Toggle */}
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="lg:hidden p-2 rounded-lg hover:bg-[#F5F5F5]"
+                className="lg:hidden p-2 rounded-lg hover:bg-[#1F1F1F]"
               >
-                <svg className="w-6 h-6 text-[#2D3436]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 text-[#FFD700]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   {mobileMenuOpen ? (
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   ) : (
@@ -128,12 +127,12 @@ export default function Header() {
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="lg:hidden py-4 border-t border-[#E8E8E8]">
+          <div className="lg:hidden py-4 border-t border-[#2D2D2D]">
             <div className="mb-4">
               <input
                 type="text"
                 placeholder="搜索..."
-                className="w-full h-10 pl-10 pr-4 rounded-full bg-[#F5F5F5] border border-transparent focus:border-[#FF6B35] outline-none text-sm"
+                className="w-full h-10 pl-10 pr-4 rounded-full bg-[#1F1F1F] border border-[#3D3D3D] focus:border-[#FFD700] outline-none text-sm text-[#FFD700] placeholder-[#8B7355]"
               />
             </div>
             <nav className="grid grid-cols-2 gap-2">
@@ -141,10 +140,10 @@ export default function Header() {
                 <Link
                   key={category.id}
                   href={`/${category.id}`}
-                  className="flex items-center gap-2 px-4 py-3 rounded-lg bg-[#F9F9F9] hover:bg-[#FFF5F0] transition-colors"
+                  className="flex items-center gap-2 px-4 py-3 rounded-lg bg-[#141414] hover:bg-[#1F1F1F] border border-[#2D2D2D] transition-colors"
                 >
                   <span className="text-xl">{category.icon}</span>
-                  <span className="text-sm font-medium text-[#2D3436]">{category.name}</span>
+                  <span className="text-sm font-medium text-[#FFD700]">{category.name}</span>
                 </Link>
               ))}
             </nav>

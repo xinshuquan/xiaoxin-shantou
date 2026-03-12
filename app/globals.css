@@ -1,37 +1,41 @@
 @import "tailwindcss";
 
 :root {
-  /* 主色调 - 活力橙 */
-  --primary: #FF6B35;
-  --primary-dark: #E55A2B;
-  --primary-light: #FF8A5C;
+  /* 主色调 - 鎏金 */
+  --primary: #FFD700;
+  --primary-dark: #D4AF37;
+  --primary-light: #FFE44D;
   
-  /* 辅助色 - 深海蓝 */
-  --secondary: #1A535C;
-  --secondary-dark: #143F45;
-  --secondary-light: #2A6B75;
+  /* 辅助色 - 深邃黑 */
+  --secondary: #1A1A1A;
+  --secondary-dark: #0D0D0D;
+  --secondary-light: #2D2D2D;
   
-  /* 强调色 - 阳光黄 */
-  --accent: #FFE66D;
-  --accent-dark: #FFD93D;
+  /* 强调色 */
+  --accent: #FFD700;
+  --accent-dark: #D4AF37;
   
   /* 功能色 */
   --success: #4CAF50;
   --warning: #FF9800;
   --error: #F44336;
   
-  /* 背景色 */
-  --background: #FFFDF7;
-  --surface: #FFFFFF;
+  /* 背景色 - 深黑 */
+  --background: #0A0A0A;
+  --surface: #141414;
+  --surface-light: #1F1F1F;
   
-  /* 文字色 */
-  --text-primary: #2D3436;
-  --text-secondary: #636E72;
-  --text-muted: #9CA3AF;
+  /* 文字色 - 金色系 */
+  --text-primary: #FFD700;
+  --text-secondary: #C9A227;
+  --text-muted: #8B7355;
   
   /* 边框色 */
-  --border: #E8E8E8;
-  --border-light: #F0F0F0;
+  --border: #2D2D2D;
+  --border-light: #3D3D3D;
+  
+  /* 金色渐变 */
+  --gold-gradient: linear-gradient(135deg, #FFD700 0%, #D4AF37 50%, #B8860B 100%);
 }
 
 @theme inline {
@@ -45,9 +49,10 @@
   --color-accent-dark: var(--accent-dark);
   --color-success: var(--success);
   --color-warning: var(--warning);
-  --color-error: var(--color);
+  --color-error: var(--error);
   --color-background: var(--background);
   --color-surface: var(--surface);
+  --color-surface-light: var(--surface-light);
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);
   --color-text-muted: var(--text-muted);
@@ -72,6 +77,27 @@ body {
   font-family: "ZCOOL KuaiLe", cursive;
 }
 
+/* 金色文字 */
+.text-gold {
+  color: var(--primary);
+}
+
+.text-gold-dark {
+  color: var(--primary-dark);
+}
+
+.text-gold-light {
+  color: var(--primary-light);
+}
+
+/* 金色渐变文字 */
+.text-gradient-gold {
+  background: var(--gold-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
 /* 滚动条样式 */
 ::-webkit-scrollbar {
   width: 8px;
@@ -79,16 +105,16 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--border-light);
+  background: var(--secondary-dark);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--text-muted);
+  background: var(--primary-dark);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-secondary);
+  background: var(--primary);
 }
 
 /* 动画效果 */
@@ -103,10 +129,19 @@ body {
 
 @keyframes pulse-glow {
   0%, 100% {
-    box-shadow: 0 0 20px rgba(255, 107, 53, 0.3);
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
   }
   50% {
-    box-shadow: 0 0 40px rgba(255, 107, 53, 0.6);
+    box-shadow: 0 0 40px rgba(255, 215, 0, 0.6);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
   }
 }
 
@@ -118,6 +153,14 @@ body {
   animation: pulse-glow 2s ease-in-out infinite;
 }
 
+.animate-shimmer {
+  animation: shimmer 3s linear infinite;
+  background: linear-gradient(90deg, var(--primary-dark) 0%, var(--primary) 50%, var(--primary-dark) 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
 /* 卡片悬浮效果 */
 .card-hover {
   transition: all 0.3s ease-in-out;
@@ -125,18 +168,51 @@ body {
 
 .card-hover:hover {
   transform: translateY(-8px);
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 20px 25px -5px rgba(255, 215, 0, 0.15), 0 10px 10px -5px rgba(255, 215, 0, 0.1);
 }
 
 /* 渐变背景 */
 .bg-gradient-primary {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  background: var(--gold-gradient);
 }
 
-.bg-gradient-secondary {
-  background: linear-gradient(135deg, var(--secondary) 0%, var(--secondary-dark) 100%);
+.bg-gradient-dark {
+  background: linear-gradient(180deg, var(--background) 0%, var(--secondary-dark) 100%);
 }
 
-.bg-gradient-warm {
-  background: linear-gradient(180deg, var(--background) 0%, #FFF8F0 100%);
+.bg-gradient-gold {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.1) 0%, rgba(212, 175, 55, 0.05) 100%);
+}
+
+/* 金色边框 */
+.border-gold {
+  border-color: var(--primary-dark);
+}
+
+/* 金色按钮 */
+.btn-gold {
+  background: var(--gold-gradient);
+  color: var(--secondary-dark);
+  font-weight: 600;
+}
+
+.btn-gold:hover {
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+}
+
+/* 金色装饰线 */
+.gold-line {
+  height: 2px;
+  background: var(--gold-gradient);
+}
+
+/* 深色卡片 */
+.dark-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.dark-card:hover {
+  border-color: var(--primary-dark);
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.1);
 }
