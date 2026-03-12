@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { upload } from '@vercel/blob/client';
 
 interface ModuleData {
   id: string;
@@ -74,8 +75,27 @@ export default function AdminDashboard() {
   const [saveStatus, setSaveStatus] = useState<string>('');
   const [saving, setSaving] = useState(false);
   const [existingItems, setExistingItems] = useState<SavedItem[]>([]);
+  const [blobConfigured, setBlobConfigured] = useState<boolean | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
+
+  // Test if Blob is configured
+  useEffect(() => {
+    const testBlob = async () => {
+      try {
+        // Try a simple upload to test
+        const testBlob = await upload('test.txt', new Blob(['test']), {
+          access: 'public',
+          handleUploadUrl: '/api/upload',
+        });
+        setBlobConfigured(true);
+      } catch (e) {
+        console.log('Blob not configured:', e);
+        setBlobConfigured(false);
+      }
+    };
+    testBlob();
+  }, []);
 
   const loadData = () => {
     try {
@@ -131,86 +151,65 @@ export default function AdminDashboard() {
 
   const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (files) {
-      // Check total size first
-      let totalSize = 0;
-      Array.from(files).forEach(f => totalSize += f.size);
-      
-      if (totalSize > 100 * 1024 * 1024) {
-        alert('视频总大小不能超过100MB');
-        return;
-      }
-      
-      setSaveStatus('处理视频中...');
-      const newVideos: string[] = [];
-      const newPreviews: string[] = [];
-      
-      // 先尝试云端上传
-      let cloudUploadSuccess = false;
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        try {
-          const formData = new FormData();
-          formData.append('file', file);
-          
-          const response = await fetch('/api/upload', {
-            method: 'POST',
-            body: formData,
-          });
-          
-          if (response.ok) {
-            const result = await response.json();
-            newVideos.push(result.url);
-            newPreviews.push(URL.createObjectURL(file));
-            cloudUploadSuccess = true;
-          }
-        } catch (e) {
-          // 云端上传失败，继续用本地
-        }
-      }
-      
-      // 如果云端失败，使用 base64（仅支持小视频）
-      if (!cloudUploadSuccess) {
-        setSaveStatus('使用本地存储...');
-        
-        for (let i = 0; i < files.length; i++) {
-          const file = files[i];
-          
-          // 建议小于 3MB
-          if (file.size > 3 * 1024 * 1024) {
-            alert('⚠️ 云端存储未配置成功\n\n当前使用本地存储，但只能支持小于 3MB 的小视频。\n\n要支持大视频，请在 Vercel 控制台的 Storage 中确认 Blob Store 已正确创建并连接到项目。');
-            continue;
-          }
-          
-          try {
-            const base64 = await new Promise<string>((resolve) => {
-              const reader = new FileReader();
-              reader.onload = (e) => resolve(e.target?.result as string);
-              reader.readAsDataURL(file);
-            });
-            newVideos.push(base64);
-            newPreviews.push(URL.createObjectURL(file));
-          } catch (e) {
-            alert('视频处理失败');
-          }
-        }
-      }
-      
-      if (newVideos.length > 0) {
-        setVideoPreviews(p => [...p, ...newPreviews]);
-        setFormData(d => ({ ...d, videos: [...d.videos, ...newVideos] }));
-        setSaveStatus(cloudUploadSuccess ? '✓ 视频上传成功（云端）' : '✓ 视频已添加（本地存储，保存时可能失败）');
-      } else {
-        setSaveStatus('');
-      }
-      
-      if (newVideos.length > 0) {
-        setVideoPreviews(p => [...p, ...newPreviews]);
-        setFormData(d => ({ ...d, videos: [...d.videos, ...newVideos] }));
-      }
-      
-      setSaveStatus('');
+    if (!files || files.length === 0) return;
+
+    // Check total size
+    let totalSize = 0;
+    Array.from(files).forEach(f => totalSize += f.size);
+    
+    if (totalSize > 100 * 1024 * 1024) {
+      alert('视频总大小不能超过100MB');
+      return;
     }
+    
+    setSaveStatus('上传视频中...');
+    const newVideos: string[] = [];
+    const newPreviews: string[] = [];
+    
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      
+      try {
+        // Try client-side upload to Vercel Blob
+        const blob = await upload(file.name, file, {
+          access: 'public',
+          handleUploadUrl: '/api/upload',
+        });
+        
+        newVideos.push(blob.url);
+        newPreviews.push(URL.createObjectURL(file));
+        setSaveStatus(`✓ 上传成功: ${file.name}`);
+      } catch (blobError) {
+        console.error('Blob upload failed:', blobError);
+        
+        // Fallback: check size
+        if (file.size > 2 * 1024 * 1024) {
+          alert(`❌ ${file.name} 太大！\n\n云存储未配置，需要使用小于 2MB 的视频。\n\n请在 Vercel 控制台确认 Blob Store 已正确创建。`);
+          continue;
+        }
+        
+        // Try base64 for small files
+        try {
+          const base64 = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target?.result as string);
+            reader.readAsDataURL(file);
+          });
+          newVideos.push(base64);
+          newPreviews.push(URL.createObjectURL(file));
+          setSaveStatus('⚠ 使用本地存储');
+        } catch {
+          alert(`上传失败: ${file.name}`);
+        }
+      }
+    }
+    
+    if (newVideos.length > 0) {
+      setVideoPreviews(p => [...p, ...newPreviews]);
+      setFormData(d => ({ ...d, videos: [...d.videos, ...newVideos] }));
+    }
+    
+    setSaveStatus('');
     if (videoInputRef.current) videoInputRef.current.value = '';
   };
 
@@ -233,18 +232,16 @@ export default function AdminDashboard() {
   const handleSave = () => {
     if (!formData.name) { setSaveStatus('请填写项目名称'); setTimeout(() => setSaveStatus(''), 3000); return; }
     
-    // Check data size before saving (localStorage typically has 5-10MB limit)
     const dataSize = JSON.stringify(formData).length;
     const sizeInMB = (dataSize / (1024 * 1024)).toFixed(2);
     
-    // 检查是否有本地存储的视频（base64），给提示但不阻止
     const hasLocalVideo = formData.videos.some((v: string) => v.startsWith('data:video'));
     if (hasLocalVideo) {
-      setSaveStatus('⚠️ 视频存在本地存储中，保存可能失败（建议使用小于 2MB 的视频）');
+      setSaveStatus('⚠️ 视频为本地存储，保存可能失败');
     }
     
     if (dataSize > 8 * 1024 * 1024) {
-      setSaveStatus(`数据过大 (${sizeInMB}MB)，请减少图片数量或使用更小的图片文件`);
+      setSaveStatus(`数据过大 (${sizeInMB}MB)，请减少图片/视频`);
       setTimeout(() => setSaveStatus(''), 5000);
       return;
     }
@@ -262,7 +259,7 @@ export default function AdminDashboard() {
       if (err.name === 'QuotaExceededError' || err.message?.includes('quota')) {
         setSaveStatus('存储空间不足，请删除一些旧数据');
       } else {
-        setSaveStatus('保存失败，数据可能过大');
+        setSaveStatus('保存失败');
       }
     }
     setSaving(false); setTimeout(() => setSaveStatus(''), 3000);
@@ -280,7 +277,12 @@ export default function AdminDashboard() {
             <Link href="/" className="w-10 h-10 rounded-full bg-gradient-to-br from-[#FFD700] to-[#D4AF37] flex items-center justify-center text-[#0D0D0D] font-bold"><span className="font-art">新</span></Link>
             <div><h1 className="text-xl font-bold text-[#FFD700] font-art">后台管理系统</h1><p className="text-xs text-[#8B7355]">小新带你游汕头</p></div>
           </div>
-          <button onClick={handleLogout} className="px-4 py-2 bg-[#1F1F1F] border border-[#3D3D3D] rounded-lg text-[#FFD700] hover:bg-[#FFD700] hover:text-[#0D0D0D]">退出登录</button>
+          <div className="flex items-center gap-4">
+            {blobConfigured === false && (
+              <span className="text-xs text-red-400">⚠️ 云存储未配置</span>
+            )}
+            <button onClick={handleLogout} className="px-4 py-2 bg-[#1F1F1F] border border-[#3D3D3D] rounded-lg text-[#FFD700] hover:bg-[#FFD700] hover:text-[#0D0D0D]">退出登录</button>
+          </div>
         </div>
       </header>
       <div className="max-w-7xl mx-auto px-6 py-8">
@@ -313,14 +315,14 @@ export default function AdminDashboard() {
                     {imagePreviews.length > 0 && <div className="grid grid-cols-3 gap-2">{imagePreviews.map((img, i) => <div key={i} className="relative"><img src={img} className="w-full h-24 object-cover rounded-lg" /><button onClick={() => removeImage(i)} className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full">×</button></div>)}</div>}
                   </div>
                   <div>
-                    <label className="block text-[#FFD700] text-sm mb-2">视频上传（上传到云端，支持100MB）</label>
+                    <label className="block text-[#FFD700] text-sm mb-2">视频上传（云端存储，支持100MB）</label>
                     <input type="file" ref={videoInputRef} accept="video/*" multiple onChange={handleVideoUpload} className="hidden" />
                     <div onClick={() => videoInputRef.current?.click()} className="border-2 border-dashed border-[#3D3D3D] rounded-xl p-4 text-center hover:border-[#FFD700] cursor-pointer mb-3">点击选择视频</div>
                     {videoPreviews.length > 0 && <div className="grid grid-cols-2 gap-2">{videoPreviews.map((v, i) => <div key={i} className="relative"><video src={v} className="w-full h-24 object-cover rounded-lg" /><button onClick={() => removeVideo(i)} className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full">×</button></div>)}</div>}
                   </div>
                   <div><label className="block text-[#FFD700] text-sm mb-2">地址</label><input type="text" name="address" value={formData.address} onChange={handleInputChange} className="w-full h-12 px-4 bg-[#1F1F1F] border border-[#3D3D3D] rounded-lg focus:border-[#FFD700] outline-none text-[#FFD700]" /></div>
                   <div><label className="block text-[#FFD700] text-sm mb-2">电话</label><input type="text" name="phone" value={formData.phone} onChange={handleInputChange} className="w-full h-12 px-4 bg-[#1F1F1F] border border-[#3D3D3D] rounded-lg focus:border-[#FFD700] outline-none text-[#FFD700]" /></div>
-                  {saveStatus && <div className={`p-3 rounded-lg text-center ${saveStatus.includes('成功') ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>{saveStatus}</div>}
+                  {saveStatus && <div className={`p-3 rounded-lg text-center ${saveStatus.includes('成功') ? 'bg-green-500/20 text-green-400' : saveStatus.includes('⚠') ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'}`}>{saveStatus}</div>}
                   <div className="flex gap-4">
                     <button onClick={handleSave} disabled={saving} className="flex-1 h-12 bg-gradient-to-r from-[#FFD700] to-[#D4AF37] text-[#0D0D0D] rounded-lg font-bold disabled:opacity-50">{saving ? '保存中...' : '保存修改'}</button>
                     <button onClick={() => { setFormData({ name: '', category: '', description: '', price: '', rating: '', images: [], videos: [], address: '', phone: '' }); setImagePreviews([]); setVideoPreviews([]); }} className="px-6 h-12 bg-[#1F1F1F] border border-[#3D3D3D] text-[#C9A227] rounded-lg">清空</button>
