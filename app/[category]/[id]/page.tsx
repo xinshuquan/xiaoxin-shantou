@@ -57,21 +57,20 @@ export default function DetailPage() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   useEffect(() => {
-    const moduleId = params.id as string;
-    const module = moduleId?.split('/')[0];
+    const category = params.category as string;
+    const id = params.id as string;
     
-    if (!module || !STORAGE_KEYS[module]) {
+    // Check if category is valid
+    if (!category || !STORAGE_KEYS[category]) {
       setLoading(false);
       return;
     }
 
     // Get the item ID from URL
-    const pathParts = moduleId.split('/');
-    const id = pathParts[pathParts.length - 1];
     const itemId = id.startsWith('admin-') ? id.replace('admin-', '') : id;
 
     try {
-      const key = STORAGE_KEYS[module];
+      const key = STORAGE_KEYS[category];
       const data = localStorage.getItem(key);
       if (data) {
         const items = JSON.parse(data);
@@ -80,8 +79,8 @@ export default function DetailPage() {
           setItem({
             id: `admin-${found.id}`,
             name: found.data.name,
-            category: found.data.category || MODULE_NAMES[module],
-            subCategory: found.data.subCategory || '',  // 热门推荐、最新上线
+            category: found.data.category || MODULE_NAMES[category],
+            subCategory: found.data.category === '热门推荐' || found.data.category === '最新上线' ? found.data.category : '',
             rating: parseFloat(found.data.rating) || 4.5,
             price: found.data.price || '¥0',
             address: found.data.address || '',
@@ -99,8 +98,8 @@ export default function DetailPage() {
       console.error('Error loading item:', e);
     }
     
-    router.push(`/${module}`);
-  }, [params.id, router]);
+    router.push(`/${category}`);
+  }, [params.category, params.id, router]);
 
   if (loading) {
     return (

@@ -26,6 +26,7 @@ export default function PropertyDetail() {
   const router = useRouter();
   const [item, setItem] = useState<PropertyItem | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   useEffect(() => {
     const id = params.id as string;
@@ -88,6 +89,26 @@ export default function PropertyDetail() {
 
   return (
     <div className="min-h-screen bg-[#FFFDF7]">
+      {/* Image Lightbox */}
+      {selectedImage && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+          onClick={() => setSelectedImage(null)}
+        >
+          <button 
+            className="absolute top-4 right-4 text-white text-4xl hover:text-gray-300"
+            onClick={() => setSelectedImage(null)}
+          >
+            ×
+          </button>
+          <img 
+            src={selectedImage} 
+            alt="放大图片" 
+            className="max-w-full max-h-full object-contain"
+          />
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-gradient-to-r from-[#E67E22] to-[#D35400] py-8">
         <div className="max-w-4xl mx-auto px-4">
@@ -108,13 +129,15 @@ export default function PropertyDetail() {
         {/* Images */}
         {item.images && item.images.length > 0 && (
           <div className="mb-8">
+            <h2 className="text-xl font-bold text-[#2D3436] mb-4">图片展示</h2>
             <div className="grid grid-cols-2 gap-4">
               {item.images.map((img, i) => (
                 <img 
                   key={i} 
                   src={img} 
                   alt={`${item.name} ${i + 1}`}
-                  className="w-full h-64 object-cover rounded-xl"
+                  className="w-full h-64 object-cover rounded-xl cursor-pointer hover:opacity-90 transition-opacity"
+                  onClick={() => setSelectedImage(img)}
                 />
               ))}
             </div>
