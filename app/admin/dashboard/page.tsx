@@ -31,15 +31,23 @@ interface SavedItem {
   timestamp: string;
 }
 
-// IndexedDB helper functions
+// IndexedDB helper
 const DB_NAME = 'XiaoxinAdminDB';
 const STORE_NAME = 'adminData';
+let dbInstance: IDBDatabase | null = null;
 
-const openDB = (): Promise<IDBDatabase> => {
+const getDB = (): Promise<IDBDatabase> => {
   return new Promise((resolve, reject) => {
+    if (dbInstance) {
+      resolve(dbInstance);
+      return;
+    }
     const request = indexedDB.open(DB_NAME, 1);
     request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve(request.result);
+    request.onsuccess = () => {
+      dbInstance = request.result;
+      resolve(request.result);
+    };
     request.onupgradeneeded = (event) => {
       const db = (event.target as IDBOpenDBRequest).result;
       if (!db.objectStoreNames.contains(STORE_NAME)) {
@@ -50,54 +58,52 @@ const openDB = (): Promise<IDBDatabase> => {
 };
 
 const saveToIndexedDB = async (moduleId: string, data: FormData): Promise<string> => {
-  const db = await openDB();
-  const tx = db.transaction(STORE_NAME, 'readwrite');
-  const store = tx.objectStore(STORE_NAME);
-  
-  const record = {
-    id: `${moduleId}_${Date.now()}`,
-    moduleId,
-    data,
-    timestamp: new Date().toISOString(),
-  };
-  
-  store.add(record);
-  
+  const db = await getDB();
   return new Promise((resolve, reject) => {
-    tx.oncomplete = () => resolve(record.id);
-    tx.onerror = () => reject(tx.error);
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    const record: SavedItem = {
+      id: `${moduleId}_${Date.now()}`,
+      moduleId,
+      data,
+      timestamp: new Date().toISOString(),
+    };
+    const request = store.add(record);
+    request.onsuccess = () => resolve(record.id);
+    request.onerror = () => reject(request.error);
   });
 };
 
 const getAllFromIndexedDB = async (moduleId: string): Promise<SavedItem[]> => {
-  try {
-    const db = await openDB();
-    const tx = db.transaction(STORE_NAME, 'readonly');
-    const store = tx.objectStore(STORE_NAME);
-    const request = store.getAll();
-    
-    return new Promise((resolve) => {
+  const db = await getDB();
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction(STORE_NAME, 'readonly');
+      const store = tx.objectStore(STORE_NAME);
+      const request = store.getAll();
       request.onsuccess = () => {
         const results = request.result.filter((item: SavedItem) => item.moduleId === moduleId);
         resolve(results);
       };
       request.onerror = () => resolve([]);
-    });
-  } catch (error) {
-    console.error('IndexedDB get error:', error);
-    return [];
-  }
+    } catch (error) {
+      resolve([]);
+    }
+  });
 };
 
 const deleteFromIndexedDB = async (id: string) => {
-  try {
-    const db = await openDB();
-    const tx = db.transaction(STORE_NAME, 'readwrite');
-    const store = tx.objectStore(STORE_NAME);
-    store.delete(id);
-  } catch (error) {
-    console.error('IndexedDB delete error:', error);
-  }
+  const db = await getDB();
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+      store.delete(id);
+      tx.oncomplete = () => resolve(true);
+    } catch (error) {
+      resolve(false);
+    }
+  });
 };
 
 export default function AdminDashboard() {
@@ -105,15 +111,8 @@ export default function AdminDashboard() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [activeModule, setActiveModule] = useState<string>('food');
   const [formData, setFormData] = useState<FormData>({
-    name: '',
-    category: '',
-    description: '',
-    price: '',
-    rating: '',
-    images: [],
-    videos: [],
-    address: '',
-    phone: '',
+    name: '', category: '', description: '', price: '', rating: '',
+    images: [], videos: [], address: '', phone: '',
   });
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [videoPreviews, setVideoPreviews] = useState<string[]>([]);
@@ -123,15 +122,14 @@ export default function AdminDashboard() {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
-  // Load data when module changes
-  useEffect(() => {
-    loadFromIndexedDB();
-  }, [activeModule]);
-
   const loadFromIndexedDB = async () => {
     const data = await getAllFromIndexedDB(activeModule);
     setExistingItems(data);
   };
+
+  useEffect(() => {
+    loadFromIndexedDB();
+  }, [activeModule]);
 
   useEffect(() => {
     const auth = localStorage.getItem('adminAuth');
@@ -166,13 +164,11 @@ export default function AdminDashboard() {
     router.push('/admin');
   };
 
-  // Handle multiple image upload
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
       const newImages: string[] = [];
       let loaded = 0;
-      
       Array.from(files).forEach((file) => {
         const reader = new FileReader();
         reader.onloadend = () => {
@@ -189,29 +185,24 @@ export default function AdminDashboard() {
     if (imageInputRef.current) imageInputRef.current.value = '';
   };
 
-  // Handle multiple video upload
   const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
       const newVideos: string[] = [];
       let loaded = 0;
-      
       Array.from(files).forEach((file) => {
         if (file.size > 50 * 1024 * 1024) {
           alert(`视频 ${file.name} 超过50MB，跳过`);
           loaded++;
           return;
         }
-        
         const reader = new FileReader();
         reader.onloadend = () => {
           newVideos.push(reader.result as string);
           loaded++;
-          if (loaded === files.length) {
-            if (newVideos.length > 0) {
-              setVideoPreviews([...videoPreviews, ...newVideos]);
-              setFormData({ ...formData, videos: [...formData.videos, ...newVideos] });
-            }
+          if (loaded === files.length && newVideos.length > 0) {
+            setVideoPreviews([...videoPreviews, ...newVideos]);
+            setFormData({ ...formData, videos: [...formData.videos, ...newVideos] });
           }
         };
         reader.readAsDataURL(file);
@@ -243,44 +234,25 @@ export default function AdminDashboard() {
     loadFromIndexedDB();
   };
 
-  // Save data using IndexedDB
   const handleSave = async () => {
     if (!formData.name) {
       setSaveStatus('请填写项目名称');
       setTimeout(() => setSaveStatus(''), 3000);
       return;
     }
-
     setSaving(true);
     setSaveStatus('正在保存...');
-
     try {
       await saveToIndexedDB(activeModule, formData);
       setSaveStatus('保存成功！');
-      
-      // Reset form
-      setFormData({
-        name: '',
-        category: '',
-        description: '',
-        price: '',
-        rating: '',
-        images: [],
-        videos: [],
-        address: '',
-        phone: '',
-      });
+      setFormData({ name: '', category: '', description: '', price: '', rating: '', images: [], videos: [], address: '', phone: '' });
       setImagePreviews([]);
       setVideoPreviews([]);
-      
-      // Refresh list
       loadFromIndexedDB();
-      
     } catch (error) {
       console.error('Save error:', error);
       setSaveStatus('保存失败');
     }
-
     setSaving(false);
     setTimeout(() => setSaveStatus(''), 3000);
   };
@@ -298,17 +270,13 @@ export default function AdminDashboard() {
       <header className="bg-[#0D0D0D] border-b border-[#2D2D2D] px-6 py-4">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-4">
-            <Link href="/" className="w-10 h-10 rounded-full bg-gradient-to-br from-[#FFD700] to-[#D4AF37] flex items-center justify-center text-[#0D0D0D] font-bold">
-              <span className="font-art">新</span>
-            </Link>
+            <Link href="/" className="w-10 h-10 rounded-full bg-gradient-to-br from-[#FFD700] to-[#D4AF37] flex items-center justify-center text-[#0D0D0D] font-bold"><span className="font-art">新</span></Link>
             <div>
               <h1 className="text-xl font-bold text-[#FFD700] font-art">后台管理系统</h1>
               <p className="text-xs text-[#8B7355]">小新带你游汕头</p>
             </div>
           </div>
-          <button onClick={handleLogout} className="px-4 py-2 bg-[#1F1F1F] border border-[#3D3D3D] rounded-lg text-[#FFD700] hover:bg-[#FFD700] hover:text-[#0D0D0D] transition-all font-art">
-            退出登录
-          </button>
+          <button onClick={handleLogout} className="px-4 py-2 bg-[#1F1F1F] border border-[#3D3D3D] rounded-lg text-[#FFD700] hover:bg-[#FFD700] hover:text-[#0D0D0D] transition-all font-art">退出登录</button>
         </div>
       </header>
 
@@ -331,22 +299,8 @@ export default function AdminDashboard() {
 
           <div className="flex overflow-x-auto gap-2 p-4 border-b border-[#2D2D2D]">
             {modules.map((module) => (
-              <button
-                key={module.id}
-                onClick={() => {
-                  setActiveModule(module.id);
-                  setFormData({ name: '', category: '', description: '', price: '', rating: '', images: [], videos: [], address: '', phone: '' });
-                  setImagePreviews([]);
-                  setVideoPreviews([]);
-                }}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg whitespace-nowrap transition-all font-art ${
-                  activeModule === module.id
-                    ? 'bg-[#FFD700] text-[#0D0D0D]'
-                    : 'bg-[#1F1F1F] text-[#C9A227] hover:bg-[#2D2D2D]'
-                }`}
-              >
-                <span>{module.icon}</span>
-                <span>{module.name}</span>
+              <button key={module.id} onClick={() => { setActiveModule(module.id); setFormData({ name: '', category: '', description: '', price: '', rating: '', images: [], videos: [], address: '', phone: '' }); setImagePreviews([]); setVideoPreviews([]); }} className={`flex items-center gap-2 px-4 py-2 rounded-lg whitespace-nowrap transition-all font-art ${activeModule === module.id ? 'bg-[#FFD700] text-[#0D0D0D]' : 'bg-[#1F1F1F] text-[#C9A227] hover:bg-[#2D2D2D]'}`}>
+                <span>{module.icon}</span><span>{module.name}</span>
               </button>
             ))}
           </div>
@@ -363,34 +317,13 @@ export default function AdminDashboard() {
 
                 <div className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-[#FFD700] text-sm font-medium mb-2 font-art">项目名称 *</label>
-                      <input type="text" name="name" value={formData.name} onChange={handleInputChange} className="w-full h-12 px-4 bg-[#1F1F1F] border border-[#3D3D3D] rounded-lg focus:border-[#FFD700] outline-none text-[#FFD700] placeholder-[#8B7355]" placeholder="请输入项目名称" />
-                    </div>
-                    <div>
-                      <label className="block text-[#FFD700] text-sm font-medium mb-2 font-art">分类</label>
-                      <select name="category" value={formData.category} onChange={handleInputChange} className="w-full h-12 px-4 bg-[#1F1F1F] border border-[#3D3D3D] rounded-lg focus:border-[#FFD700] outline-none text-[#FFD700]">
-                        <option value="">请选择分类</option>
-                        <option>热门推荐</option>
-                        <option>最新上线</option>
-                      </select>
-                    </div>
+                    <div><label className="block text-[#FFD700] text-sm font-medium mb-2 font-art">项目名称 *</label><input type="text" name="name" value={formData.name} onChange={handleInputChange} className="w-full h-12 px-4 bg-[#1F1F1F] border border-[#3D3D3D] rounded-lg focus:border-[#FFD700] outline-none text-[#FFD700] placeholder-[#8B7355]" placeholder="请输入项目名称" /></div>
+                    <div><label className="block text-[#FFD700] text-sm font-medium mb-2 font-art">分类</label><select name="category" value={formData.category} onChange={handleInputChange} className="w-full h-12 px-4 bg-[#1F1F1F] border border-[#3D3D3D] rounded-lg focus:border-[#FFD700] outline-none text-[#FFD700]"><option value="">请选择分类</option><option>热门推荐</option><option>最新上线</option></select></div>
                   </div>
-
-                  <div>
-                    <label className="block text-[#FFD700] text-sm font-medium mb-2 font-art">详细介绍</label>
-                    <textarea name="description" value={formData.description} onChange={handleInputChange} className="w-full h-32 px-4 py-3 bg-[#1F1F1F] border border-[#3D3D3D] rounded-lg focus:border-[#FFD700] outline-none text-[#FFD700] placeholder-[#8B7355] resize-none" placeholder="请输入详细介绍" />
-                  </div>
-
+                  <div><label className="block text-[#FFD700] text-sm font-medium mb-2 font-art">详细介绍</label><textarea name="description" value={formData.description} onChange={handleInputChange} className="w-full h-32 px-4 py-3 bg-[#1F1F1F] border border-[#3D3D3D] rounded-lg focus:border-[#FFD700] outline-none text-[#FFD700] placeholder-[#8B7355] resize-none" placeholder="请输入详细介绍" /></div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-[#FFD700] text-sm font-medium mb-2 font-art">价格</label>
-                      <input type="text" name="price" value={formData.price} onChange={handleInputChange} className="w-full h-12 px-4 bg-[#1F1F1F] border border-[#3D3D3D] rounded-lg focus:border-[#FFD700] outline-none text-[#FFD700] placeholder-[#8B7355]" placeholder="如: ¥80/人" />
-                    </div>
-                    <div>
-                      <label className="block text-[#FFD700] text-sm font-medium mb-2 font-art">评分</label>
-                      <input type="text" name="rating" value={formData.rating} onChange={handleInputChange} className="w-full h-12 px-4 bg-[#1F1F1F] border border-[#3D3D3D] rounded-lg focus:border-[#FFD700] outline-none text-[#FFD700] placeholder-[#8B7355]" placeholder="如: 4.8" />
-                    </div>
+                    <div><label className="block text-[#FFD700] text-sm font-medium mb-2 font-art">价格</label><input type="text" name="price" value={formData.price} onChange={handleInputChange} className="w-full h-12 px-4 bg-[#1F1F1F] border border-[#3D3D3D] rounded-lg focus:border-[#FFD700] outline-none text-[#FFD700] placeholder-[#8B7355]" placeholder="如: ¥80/人" /></div>
+                    <div><label className="block text-[#FFD700] text-sm font-medium mb-2 font-art">评分</label><input type="text" name="rating" value={formData.rating} onChange={handleInputChange} className="w-full h-12 px-4 bg-[#1F1F1F] border border-[#3D3D3D] rounded-lg focus:border-[#FFD700] outline-none text-[#FFD700] placeholder-[#8B7355]" placeholder="如: 4.8" /></div>
                   </div>
 
                   <div>
@@ -431,33 +364,14 @@ export default function AdminDashboard() {
                     )}
                   </div>
 
-                  <div>
-                    <label className="block text-[#FFD700] text-sm font-medium mb-2 font-art">地址</label>
-                    <input type="text" name="address" value={formData.address} onChange={handleInputChange} className="w-full h-12 px-4 bg-[#1F1F1F] border border-[#3D3D3D] rounded-lg focus:border-[#FFD700] outline-none text-[#FFD700] placeholder-[#8B7355]" placeholder="请输入地址" />
-                  </div>
+                  <div><label className="block text-[#FFD700] text-sm font-medium mb-2 font-art">地址</label><input type="text" name="address" value={formData.address} onChange={handleInputChange} className="w-full h-12 px-4 bg-[#1F1F1F] border border-[#3D3D3D] rounded-lg focus:border-[#FFD700] outline-none text-[#FFD700] placeholder-[#8B7355]" placeholder="请输入地址" /></div>
+                  <div><label className="block text-[#FFD700] text-sm font-medium mb-2 font-art">联系电话</label><input type="text" name="phone" value={formData.phone} onChange={handleInputChange} className="w-full h-12 px-4 bg-[#1F1F1F] border border-[#3D3D3D] rounded-lg focus:border-[#FFD700] outline-none text-[#FFD700] placeholder-[#8B7355]" placeholder="请输入联系电话" /></div>
 
-                  <div>
-                    <label className="block text-[#FFD700] text-sm font-medium mb-2 font-art">联系电话</label>
-                    <input type="text" name="phone" value={formData.phone} onChange={handleInputChange} className="w-full h-12 px-4 bg-[#1F1F1F] border border-[#3D3D3D] rounded-lg focus:border-[#FFD700] outline-none text-[#FFD700] placeholder-[#8B7355]" placeholder="请输入联系电话" />
-                  </div>
-
-                  {saveStatus && (
-                    <div className={`p-3 rounded-lg text-center ${saveStatus.includes('成功') ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                      {saveStatus}
-                    </div>
-                  )}
+                  {saveStatus && <div className={`p-3 rounded-lg text-center ${saveStatus.includes('成功') ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>{saveStatus}</div>}
 
                   <div className="flex gap-4 pt-4">
-                    <button onClick={handleSave} disabled={saving} className="flex-1 h-12 bg-gradient-to-r from-[#FFD700] to-[#D4AF37] text-[#0D0D0D] rounded-lg font-bold hover:shadow-[0_0_20px_rgba(255,215,0,0.4)] transition-all font-art disabled:opacity-50">
-                      {saving ? '保存中...' : '保存修改'}
-                    </button>
-                    <button onClick={() => {
-                      setFormData({ name: '', category: '', description: '', price: '', rating: '', images: [], videos: [], address: '', phone: '' });
-                      setImagePreviews([]);
-                      setVideoPreviews([]);
-                    }} className="px-6 h-12 bg-[#1F1F1F] border border-[#3D3D3D] text-[#C9A227] rounded-lg font-bold hover:bg-[#2D2D2D] transition-all font-art">
-                      清空
-                    </button>
+                    <button onClick={handleSave} disabled={saving} className="flex-1 h-12 bg-gradient-to-r from-[#FFD700] to-[#D4AF37] text-[#0D0D0D] rounded-lg font-bold hover:shadow-[0_0_20px_rgba(255,215,0,0.4)] transition-all font-art disabled:opacity-50">{saving ? '保存中...' : '保存修改'}</button>
+                    <button onClick={() => { setFormData({ name: '', category: '', description: '', price: '', rating: '', images: [], videos: [], address: '', phone: '' }); setImagePreviews([]); setVideoPreviews([]); }} className="px-6 h-12 bg-[#1F1F1F] border border-[#3D3D3D] text-[#C9A227] rounded-lg font-bold hover:bg-[#2D2D2D] transition-all font-art">清空</button>
                   </div>
                 </div>
               </div>
