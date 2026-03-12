@@ -135,7 +135,7 @@ export default function AdminDashboard() {
       const newVideos: string[] = [];
       let loaded = 0;
       Array.from(files).forEach((file) => {
-        if (file.size > 10 * 1024 * 1024) { loaded++; return; }
+        if (file.size > 100 * 1024 * 1024) { loaded++; return; }
         const reader = new FileReader();
         reader.onloadend = () => { newVideos.push(reader.result as string); loaded++; };
         reader.readAsDataURL(file);
@@ -223,7 +223,7 @@ export default function AdminDashboard() {
                     {imagePreviews.length > 0 && <div className="grid grid-cols-3 gap-2">{imagePreviews.map((img, i) => <div key={i} className="relative"><img src={img} className="w-full h-24 object-cover rounded-lg" /><button onClick={() => removeImage(i)} className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full">×</button></div>)}</div>}
                   </div>
                   <div>
-                    <label className="block text-[#FFD700] text-sm mb-2">视频上传（最大10MB）</label>
+                    <label className="block text-[#FFD700] text-sm mb-2">视频上传（最大100MB）</label>
                     <input type="file" ref={videoInputRef} accept="video/*" multiple onChange={handleVideoUpload} className="hidden" />
                     <div onClick={() => videoInputRef.current?.click()} className="border-2 border-dashed border-[#3D3D3D] rounded-xl p-4 text-center hover:border-[#FFD700] cursor-pointer mb-3">点击选择视频</div>
                     {videoPreviews.length > 0 && <div className="grid grid-cols-2 gap-2">{videoPreviews.map((v, i) => <div key={i} className="relative"><video src={v} className="w-full h-24 object-cover rounded-lg" /><button onClick={() => removeVideo(i)} className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full">×</button></div>)}</div>}
