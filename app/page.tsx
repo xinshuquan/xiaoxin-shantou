@@ -88,8 +88,8 @@ export default function HomePage() {
           <div className="absolute bottom-0 right-0 w-96 h-96 bg-white rounded-full blur-3xl"></div>
         </div>
         
-        {/* Left Red Lantern with Glow */}
-        <div className="absolute left-[2%] top-1/2 -translate-y-1/2 z-20">
+        {/* Left Red Lantern with Glow - behind yellow content */}
+        <div className="absolute left-[2%] top-1/2 -translate-y-1/2 z-0">
           <div className="relative">
             {/* Glow effect */}
             <div className="absolute inset-0 w-32 h-40 bg-red-500 rounded-full blur-[40px] opacity-60 animate-pulse"></div>
@@ -107,8 +107,8 @@ export default function HomePage() {
           </div>
         </div>
         
-        {/* Right Red Lantern with Glow */}
-        <div className="absolute right-[2%] top-1/2 -translate-y-1/2 z-20">
+        {/* Right Red Lantern with Glow - behind yellow content */}
+        <div className="absolute right-[2%] top-1/2 -translate-y-1/2 z-0">
           <div className="relative">
             {/* Glow effect */}
             <div className="absolute inset-0 w-32 h-40 bg-red-500 rounded-full blur-[40px] opacity-60 animate-pulse" style={{ animationDelay: '0.3s' }}></div>
@@ -123,34 +123,6 @@ export default function HomePage() {
               <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-16 h-8 bg-red-700/50 rounded-b-lg"></div>
               <span className="text-4xl">🏮</span>
             </div>
-          </div>
-        </div>
-        
-        {/* 潮字 - Top Left with Gold Background */}
-        <div className="absolute left-[8%] top-4 z-30">
-          <div className="bg-gradient-to-r from-[#D4AF37] to-[#FFD700] px-6 py-3 rounded-xl" style={{ boxShadow: '0 0 20px rgba(255,215,0,0.5)' }}>
-            <span 
-              className="font-calligraphy text-5xl md:text-6xl text-[#0D0D0D]"
-              style={{ 
-                animation: 'chaoshan-move-1 3s ease-in-out infinite'
-              }}
-            >
-              潮
-            </span>
-          </div>
-        </div>
-        
-        {/* 汕字 - Top Right with Gold Background */}
-        <div className="absolute right-[8%] top-4 z-30">
-          <div className="bg-gradient-to-r from-[#D4AF37] to-[#FFD700] px-6 py-3 rounded-xl" style={{ boxShadow: '0 0 20px rgba(255,215,0,0.5)' }}>
-            <span 
-              className="font-calligraphy text-5xl md:text-6xl text-[#0D0D0D]"
-              style={{ 
-                animation: 'chaoshan-move-2 3s ease-in-out infinite'
-              }}
-            >
-              汕
-            </span>
           </div>
         </div>
         
