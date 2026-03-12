@@ -1,26 +1,26 @@
-import { handleUpload } from '@vercel/blob/client';
+import { put } from '@vercel/blob';
 import { NextResponse } from 'next/server';
 
 export async function POST(request: Request): Promise<NextResponse> {
   try {
-    const body = await request.json();
+    const formData = await request.formData();
+    const file = formData.get('file') as File;
     
-    const blob = await handleUpload({
-      request,
-      body,
-      onBeforeGenerateToken: async (pathname) => {
-        // Configure the upload - allow video files up to 100MB
-        return {
-          allowedContentTypes: ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska', 'image/jpeg', 'image/png', 'image/gif', 'image/webp'],
-          maximumSizeInBytes: 100 * 1024 * 1024, // 100MB
-        };
-      },
-      onUploadCompleted: async (uploadResult) => {
-        console.log('Upload completed:', uploadResult.blob.url);
-      },
+    if (!file) {
+      return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+    }
+
+    // Generate a unique filename
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(7);
+    const filename = `${timestamp}-${random}-${file.name}`;
+
+    // Upload to Vercel Blob
+    const blob = await put(filename, file, {
+      access: 'public',
     });
 
-    return NextResponse.json(blob);
+    return NextResponse.json({ url: blob.url });
   } catch (error) {
     console.error('Upload error:', error);
     return NextResponse.json(

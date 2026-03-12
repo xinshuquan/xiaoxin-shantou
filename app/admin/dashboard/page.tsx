@@ -3,7 +3,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { upload } from '@vercel/blob/client';
 
 interface ModuleData {
   id: string;
@@ -149,41 +148,33 @@ export default function AdminDashboard() {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         try {
-          // Try Vercel Blob upload first
           let videoUrl = '';
-          try {
-            console.log('Starting upload to Vercel Blob:', file.name, file.size);
-            const blob = await upload(file.name, file, {
-              access: 'public',
-              handleUploadUrl: '/api/upload',
-            });
-            console.log('Upload result:', blob);
-            videoUrl = blob.url;
-            setSaveStatus('✓ 视频上传成功（云端存储）');
-          } catch (blobError: any) {
-            console.error('Vercel Blob upload failed:', blobError);
-            // Show more detailed error
-            const errorMsg = blobError?.message || blobError?.toString() || '未知错误';
-            alert(`云端上传失败: ${errorMsg}\n\n将使用本地存储（可能保存失败）`);
-            // Fallback: convert to base64 for small videos only
-            if (file.size > 8 * 1024 * 1024) {
-              alert(`本地存储无法保存大于8MB的视频。当前: ${(file.size/1024/1024).toFixed(1)}MB`);
-              continue;
-            }
-            setSaveStatus('⚠ 云存储失败，使用本地存储');
-            videoUrl = await new Promise<string>((resolve) => {
-              const reader = new FileReader();
-              reader.onload = (ev) => resolve(ev.target?.result as string);
-              reader.readAsDataURL(file);
-            });
+          
+          // Upload to our API which uses server-side Vercel Blob
+          const formData = new FormData();
+          formData.append('file', file);
+          
+          const response = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData,
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ error: 'Upload failed' }));
+            throw new Error(errorData.error || 'Upload failed');
           }
+          
+          const result = await response.json();
+          videoUrl = result.url;
+          setSaveStatus('✓ 视频上传成功（云端存储）');
           
           newVideos.push(videoUrl);
           // Create object URL for preview
           newPreviews.push(URL.createObjectURL(file));
         } catch (error) {
           console.error('Upload error:', error);
-          alert(`上传失败: ${file.name}`);
+          const errorMsg = error instanceof Error ? error.message : '未知错误';
+          alert(`上传失败: ${errorMsg}`);
         }
       }
       
