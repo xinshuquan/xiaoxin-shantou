@@ -66,9 +66,10 @@ export default function PropertyPage() {
 
   const allPropertyData = [
     ...adminData.map((item) => ({
-      id: item.id,  // 直接使用保存的 id，如 property_1773321193640
+      id: item.id,
       name: item.data.name,
-      category: item.data.category || '房产',
+      category: item.data.category === '热门推荐' || item.data.category === '最新上线' ? '房产' : (item.data.category || '房产'),
+      subCategory: item.data.category === '热门推荐' || item.data.category === '最新上线' ? item.data.category : '',
       rating: parseFloat(item.data.rating) || 4.5,
       price: item.data.price || '¥0/㎡',
       address: item.data.address || '',
@@ -80,7 +81,7 @@ export default function PropertyPage() {
       hours: '09:00-18:00',
       isAdminAdded: true,
     })),
-    ...propertyData.map(item => ({ ...item, isAdminAdded: false })),
+    ...propertyData.map(item => ({ ...item, isAdminAdded: false, subCategory: '' })),
   ];
 
   return (
@@ -117,8 +118,11 @@ export default function PropertyPage() {
               <div className="relative h-56 overflow-hidden">
                 <img src={item.image} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" onError={(e) => {(e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800';}} />
                 <div className="absolute top-3 right-3 px-3 py-1 bg-[#E67E22] text-white text-xs rounded-full">{item.category}</div>
-                {item.isAdminAdded && (
-                  <div className="absolute top-3 left-3 px-2 py-1 bg-[#E91E63] text-white text-xs font-bold rounded-full">新增</div>
+                {item.subCategory === '热门推荐' && (
+                  <div className="absolute top-3 left-3 px-2 py-1 bg-red-500 text-white text-xs font-bold rounded-full">🔥 热门推荐</div>
+                )}
+                {item.subCategory === '最新上线' && (
+                  <div className="absolute top-3 left-3 px-2 py-1 bg-green-500 text-white text-xs font-bold rounded-full">✨ 最新上线</div>
                 )}
                 {item.images && item.images.length > 1 && (
                   <div className="absolute bottom-3 right-3 px-2 py-1 bg-black/60 text-white text-xs rounded-full">📷 {item.images.length}</div>

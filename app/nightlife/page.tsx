@@ -59,7 +59,8 @@ export default function NightlifePage() {
     ...adminData.map((item) => ({
       id: item.id,
       name: item.data.name,
-      category: item.data.category || '夜店',
+      category: item.data.category === '热门推荐' || item.data.category === '最新上线' ? '夜店' : (item.data.category || '夜店'),
+      subCategory: item.data.category === '热门推荐' || item.data.category === '最新上线' ? item.data.category : '',
       rating: parseFloat(item.data.rating) || 4.5,
       price: item.data.price || '¥0',
       address: item.data.address || '',
@@ -71,7 +72,7 @@ export default function NightlifePage() {
       hours: '20:00-02:00',
       isAdminAdded: true,
     })),
-    ...nightlifeData.map(item => ({ ...item, isAdminAdded: false })),
+    ...nightlifeData.map(item => ({ ...item, isAdminAdded: false, subCategory: '' })),
   ];
 
   return (
@@ -117,8 +118,11 @@ export default function NightlifePage() {
               <div className="relative h-56 overflow-hidden">
                 <img src={item.image} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                 <div className="absolute top-3 right-3 px-3 py-1 bg-[#FFD700] text-[#0D0D0D] text-xs font-bold rounded-full">{item.category}</div>
-                {item.isAdminAdded && (
-                  <div className="absolute top-3 left-3 px-2 py-1 bg-[#E91E63] text-white text-xs font-bold rounded-full">新增</div>
+                {item.subCategory === '热门推荐' && (
+                  <div className="absolute top-3 left-3 px-2 py-1 bg-red-500 text-white text-xs font-bold rounded-full">🔥 热门推荐</div>
+                )}
+                {item.subCategory === '最新上线' && (
+                  <div className="absolute top-3 left-3 px-2 py-1 bg-green-500 text-white text-xs font-bold rounded-full">✨ 最新上线</div>
                 )}
               </div>
               <div className="p-5">

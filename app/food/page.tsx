@@ -69,7 +69,8 @@ export default function FoodPage() {
     ...adminData.map((item) => ({
       id: `admin-${item.id}`,
       name: item.data.name,
-      category: item.data.category || '其他',
+      category: '美食', // Main category is always 美食 for food page
+      subCategory: item.data.category === '热门推荐' || item.data.category === '最新上线' ? item.data.category : '',  // 热门推荐/最新上线
       rating: parseFloat(item.data.rating) || 4.5,
       price: item.data.price || '¥0',
       address: item.data.address || '',
@@ -82,7 +83,7 @@ export default function FoodPage() {
       hours: '待定',
       isAdminAdded: true,
     })),
-    ...foodData.map(item => ({ ...item, isAdminAdded: false })),
+    ...foodData.map(item => ({ ...item, isAdminAdded: false, subCategory: '' })),
   ];
 
   return (
@@ -148,9 +149,14 @@ export default function FoodPage() {
                 <div className="absolute top-3 right-3 px-3 py-1 bg-[#FFD700] text-[#0D0D0D] text-xs font-bold rounded-full">
                   {item.category}
                 </div>
-                {item.isAdminAdded && (
-                  <div className="absolute top-3 left-3 px-2 py-1 bg-[#E91E63] text-white text-xs font-bold rounded-full">
-                    新增
+                {item.subCategory === '热门推荐' && (
+                  <div className="absolute top-3 left-3 px-2 py-1 bg-red-500 text-white text-xs font-bold rounded-full">
+                    🔥 热门推荐
+                  </div>
+                )}
+                {item.subCategory === '最新上线' && (
+                  <div className="absolute top-3 left-3 px-2 py-1 bg-green-500 text-white text-xs font-bold rounded-full">
+                    ✨ 最新上线
                   </div>
                 )}
                 {item.images && item.images.length > 1 && (

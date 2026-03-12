@@ -59,7 +59,8 @@ export default function StayPage() {
     ...adminData.map((item) => ({
       id: item.id,
       name: item.data.name,
-      category: item.data.category || '民宿',
+      category: item.data.category === '热门推荐' || item.data.category === '最新上线' ? '民宿' : (item.data.category || '民宿'),
+      subCategory: item.data.category === '热门推荐' || item.data.category === '最新上线' ? item.data.category : '',
       rating: parseFloat(item.data.rating) || 4.5,
       price: item.data.price || '¥0/晚',
       address: item.data.address || '',
@@ -70,7 +71,7 @@ export default function StayPage() {
       description: item.data.description || '',
       isAdminAdded: true,
     })),
-    ...stayData.map(item => ({ ...item, isAdminAdded: false })),
+    ...stayData.map(item => ({ ...item, isAdminAdded: false, subCategory: '' })),
   ];
 
   return (
@@ -107,8 +108,11 @@ export default function StayPage() {
               <div className="relative h-56 overflow-hidden">
                 <img src={item.image} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                 <div className="absolute top-3 right-3 px-3 py-1 bg-[#3498DB] text-white text-xs rounded-full">{item.category}</div>
-                {item.isAdminAdded && (
-                  <div className="absolute top-3 left-3 px-2 py-1 bg-[#E91E63] text-white text-xs font-bold rounded-full">新增</div>
+                {item.subCategory === '热门推荐' && (
+                  <div className="absolute top-3 left-3 px-2 py-1 bg-red-500 text-white text-xs font-bold rounded-full">🔥 热门推荐</div>
+                )}
+                {item.subCategory === '最新上线' && (
+                  <div className="absolute top-3 left-3 px-2 py-1 bg-green-500 text-white text-xs font-bold rounded-full">✨ 最新上线</div>
                 )}
               </div>
               <div className="p-5">
