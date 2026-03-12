@@ -66,7 +66,7 @@ export default function PropertyPage() {
 
   const allPropertyData = [
     ...adminData.map((item) => ({
-      id: `admin-${item.id}`,
+      id: item.id,  // 直接使用保存的 id，如 property_1773321193640
       name: item.data.name,
       category: item.data.category || '房产',
       rating: parseFloat(item.data.rating) || 4.5,
