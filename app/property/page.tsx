@@ -6,6 +6,7 @@ import { propertyData, categories } from '@/lib/data';
 
 interface AdminItem {
   id: string;
+  moduleId: string;
   data: {
     name: string;
     category: string;
@@ -16,10 +17,41 @@ interface AdminItem {
     videos: string[];
     address: string;
     phone: string;
-    moduleName: string;
   };
   timestamp: string;
 }
+
+// IndexedDB helper
+const DB_NAME = 'XiaoxinAdminDB';
+const STORE_NAME = 'adminData';
+
+const openDB = (): Promise<IDBDatabase> => {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, 1);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
+  });
+};
+
+const getAllFromIndexedDB = async (moduleId: string): Promise<AdminItem[]> => {
+  try {
+    const db = await openDB();
+    const tx = db.transaction(STORE_NAME, 'readonly');
+    const store = tx.objectStore(STORE_NAME);
+    const request = store.getAll();
+    
+    return new Promise((resolve) => {
+      request.onsuccess = () => {
+        const results = request.result.filter((item: AdminItem) => item.moduleId === moduleId);
+        resolve(results);
+      };
+      request.onerror = () => resolve([]);
+    });
+  } catch (error) {
+    console.error('IndexedDB get error:', error);
+    return [];
+  }
+};
 
 export default function PropertyPage() {
   const category = categories[4];
@@ -27,10 +59,9 @@ export default function PropertyPage() {
   const [adminData, setAdminData] = useState<AdminItem[]>([]);
   const [isClient, setIsClient] = useState(false);
 
-  const loadData = () => {
+  const loadData = async () => {
     try {
-      const allData = JSON.parse(localStorage.getItem('adminData') || '{}');
-      const propertyItems = allData['property'] || [];
+      const propertyItems = await getAllFromIndexedDB('property');
       setAdminData(propertyItems);
       setIsClient(true);
     } catch (e) {

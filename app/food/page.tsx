@@ -6,6 +6,7 @@ import { foodData, categories } from '@/lib/data';
 
 interface AdminItem {
   id: string;
+  moduleId: string;
   data: {
     name: string;
     category: string;
@@ -16,10 +17,41 @@ interface AdminItem {
     videos: string[];
     address: string;
     phone: string;
-    moduleName: string;
   };
   timestamp: string;
 }
+
+// IndexedDB helper
+const DB_NAME = 'XiaoxinAdminDB';
+const STORE_NAME = 'adminData';
+
+const openDB = (): Promise<IDBDatabase> => {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, 1);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
+  });
+};
+
+const getAllFromIndexedDB = async (moduleId: string): Promise<AdminItem[]> => {
+  try {
+    const db = await openDB();
+    const tx = db.transaction(STORE_NAME, 'readonly');
+    const store = tx.objectStore(STORE_NAME);
+    const request = store.getAll();
+    
+    return new Promise((resolve) => {
+      request.onsuccess = () => {
+        const results = request.result.filter((item: AdminItem) => item.moduleId === moduleId);
+        resolve(results);
+      };
+      request.onerror = () => resolve([]);
+    });
+  } catch (error) {
+    console.error('IndexedDB get error:', error);
+    return [];
+  }
+};
 
 export default function FoodPage() {
   const category = categories[0];
@@ -28,11 +60,9 @@ export default function FoodPage() {
   const [isClient, setIsClient] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Function to load data
-  const loadData = () => {
+  const loadData = async () => {
     try {
-      const allData = JSON.parse(localStorage.getItem('adminData') || '{}');
-      const foodItems = allData['food'] || [];
+      const foodItems = await getAllFromIndexedDB('food');
       setAdminData(foodItems);
       setIsClient(true);
     } catch (e) {
@@ -43,14 +73,12 @@ export default function FoodPage() {
   useEffect(() => {
     loadData();
     
-    // Listen for storage changes (when admin saves data in same browser)
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'adminData' || e.key === 'publicData') {
         loadData();
       }
     };
     
-    // Listen for custom event (when admin saves in same window)
     const handleDataUpdate = () => {
       loadData();
       setRefreshKey(k => k + 1);
@@ -59,7 +87,6 @@ export default function FoodPage() {
     window.addEventListener('storage', handleStorageChange);
     window.addEventListener('adminDataUpdate', handleDataUpdate);
     
-    // Poll for updates every 2 seconds
     const interval = setInterval(loadData, 2000);
     
     return () => {
@@ -69,7 +96,6 @@ export default function FoodPage() {
     };
   }, []);
 
-  // Combine default data with admin data
   const allFoodData = [
     ...adminData.map((item) => ({
       id: `admin-${item.id}`,
