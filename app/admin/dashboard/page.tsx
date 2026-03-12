@@ -31,80 +31,35 @@ interface SavedItem {
   timestamp: string;
 }
 
-// IndexedDB helper
-const DB_NAME = 'XiaoxinAdminDB';
-const STORE_NAME = 'adminData';
-let dbInstance: IDBDatabase | null = null;
-
-const getDB = (): Promise<IDBDatabase> => {
-  return new Promise((resolve, reject) => {
-    if (dbInstance) {
-      resolve(dbInstance);
-      return;
-    }
-    const request = indexedDB.open(DB_NAME, 1);
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => {
-      dbInstance = request.result;
-      resolve(request.result);
-    };
-    request.onupgradeneeded = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: 'id' });
-      }
-    };
-  });
-};
-
-const saveToIndexedDB = async (moduleId: string, data: FormData): Promise<string> => {
-  const db = await getDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, 'readwrite');
-    const store = tx.objectStore(STORE_NAME);
-    const record: SavedItem = {
-      id: `${moduleId}_${Date.now()}`,
-      moduleId,
-      data,
-      timestamp: new Date().toISOString(),
-    };
-    const request = store.add(record);
-    request.onsuccess = () => resolve(record.id);
-    request.onerror = () => reject(request.error);
-  });
-};
-
-const getAllFromIndexedDB = async (moduleId: string): Promise<SavedItem[]> => {
-  const db = await getDB();
+// Compress image to reduce size
+const compressImage = (file: File, maxWidth = 800): Promise<string> => {
   return new Promise((resolve) => {
-    try {
-      const tx = db.transaction(STORE_NAME, 'readonly');
-      const store = tx.objectStore(STORE_NAME);
-      const request = store.getAll();
-      request.onsuccess = () => {
-        const results = request.result.filter((item: SavedItem) => item.moduleId === moduleId);
-        resolve(results);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width;
+          width = maxWidth;
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.7));
       };
-      request.onerror = () => resolve([]);
-    } catch (error) {
-      resolve([]);
-    }
+      img.src = e.target?.result as string;
+    };
+    reader.readAsDataURL(file);
   });
 };
 
-const deleteFromIndexedDB = async (id: string) => {
-  const db = await getDB();
-  return new Promise((resolve) => {
-    try {
-      const tx = db.transaction(STORE_NAME, 'readwrite');
-      const store = tx.objectStore(STORE_NAME);
-      store.delete(id);
-      tx.oncomplete = () => resolve(true);
-    } catch (error) {
-      resolve(false);
-    }
-  });
-};
+const STORAGE_KEY = 'xiaoxin_admin_';
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -122,22 +77,20 @@ export default function AdminDashboard() {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
-  const loadFromIndexedDB = async () => {
-    const data = await getAllFromIndexedDB(activeModule);
-    setExistingItems(data);
+  const loadData = () => {
+    try {
+      const key = STORAGE_KEY + activeModule;
+      const data = localStorage.getItem(key);
+      if (data) setExistingItems(JSON.parse(data));
+      else setExistingItems([]);
+    } catch (e) { setExistingItems([]); }
   };
 
-  useEffect(() => {
-    loadFromIndexedDB();
-  }, [activeModule]);
-
+  useEffect(() => { loadData(); }, [activeModule]);
   useEffect(() => {
     const auth = localStorage.getItem('adminAuth');
-    if (!auth) {
-      router.push('/admin');
-    } else {
-      setIsAuthenticated(true);
-    }
+    if (!auth) router.push('/admin');
+    else setIsAuthenticated(true);
   }, [router]);
 
   const modules: ModuleData[] = [
@@ -145,7 +98,7 @@ export default function AdminDashboard() {
     { id: 'nightlife', name: '夜店管理', icon: '🍺', count: 4, description: '酒吧、KTV、清吧等' },
     { id: 'stay', name: '民宿管理', icon: '🏨', count: 4, description: '民宿、酒店、公寓等' },
     { id: 'travel', name: '旅游管理', icon: '🗺️', count: 4, description: '景点、海岛、博物馆等' },
-    { id: 'property', name: '房产管理', icon: '🏠', count: 4, description: '新房、二手房、租房等' },
+    { id: 'property', name: '房产管理', icon: '🏠', count: 4, description: '新房，二手房、租房等' },
     { id: 'home-service', name: '家政管理', icon: '🧹', count: 4, description: '保洁、维修、搬家等' },
     { id: 'jobs', name: '招聘管理', icon: '💼', count: 4, description: '全职、兼职、实习等' },
     { id: 'wellness', name: '养生管理', icon: '🧘', count: 4, description: '健身、瑜伽、游泳等' },
@@ -159,28 +112,19 @@ export default function AdminDashboard() {
     { label: '总收入', value: '¥100,000+', icon: '💰' },
   ];
 
-  const handleLogout = () => {
-    localStorage.removeItem('adminAuth');
-    router.push('/admin');
-  };
+  const handleLogout = () => { localStorage.removeItem('adminAuth'); router.push('/admin'); };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
+      setSaveStatus('处理图片...');
       const newImages: string[] = [];
-      let loaded = 0;
-      Array.from(files).forEach((file) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          newImages.push(reader.result as string);
-          loaded++;
-          if (loaded === files.length) {
-            setImagePreviews([...imagePreviews, ...newImages]);
-            setFormData({ ...formData, images: [...formData.images, ...newImages] });
-          }
-        };
-        reader.readAsDataURL(file);
-      });
+      for (let i = 0; i < files.length; i++) {
+        try { newImages.push(await compressImage(files[i])); } catch {}
+      }
+      setImagePreviews(p => [...p, ...newImages]);
+      setFormData(d => ({ ...d, images: [...d.images, ...newImages] }));
+      setSaveStatus('');
     }
     if (imageInputRef.current) imageInputRef.current.value = '';
   };
@@ -191,77 +135,50 @@ export default function AdminDashboard() {
       const newVideos: string[] = [];
       let loaded = 0;
       Array.from(files).forEach((file) => {
-        if (file.size > 50 * 1024 * 1024) {
-          alert(`视频 ${file.name} 超过50MB，跳过`);
-          loaded++;
-          return;
-        }
+        if (file.size > 10 * 1024 * 1024) { loaded++; return; }
         const reader = new FileReader();
-        reader.onloadend = () => {
-          newVideos.push(reader.result as string);
-          loaded++;
-          if (loaded === files.length && newVideos.length > 0) {
-            setVideoPreviews([...videoPreviews, ...newVideos]);
-            setFormData({ ...formData, videos: [...formData.videos, ...newVideos] });
-          }
-        };
+        reader.onloadend = () => { newVideos.push(reader.result as string); loaded++; };
         reader.readAsDataURL(file);
       });
+      setTimeout(() => {
+        setVideoPreviews(p => [...p, ...newVideos]);
+        setFormData(d => ({ ...d, videos: [...d.videos, ...newVideos] }));
+      }, 500);
     }
     if (videoInputRef.current) videoInputRef.current.value = '';
   };
 
-  const removeImage = (index: number) => {
-    const newImages = imagePreviews.filter((_, i) => i !== index);
-    setImagePreviews(newImages);
-    setFormData({ ...formData, images: newImages });
+  const removeImage = (i: number) => {
+    const n = imagePreviews.filter((_, x) => x !== i);
+    setImagePreviews(n); setFormData(d => ({ ...d, images: n }));
+  };
+  const removeVideo = (i: number) => {
+    const n = videoPreviews.filter((_, x) => x !== i);
+    setVideoPreviews(n); setFormData(d => ({ ...d, videos: n }));
+  };
+  const handleInputChange = (e: any) => setFormData(d => ({ ...d, [e.target.name]: e.target.value }));
+  const deleteItem = (id: string) => {
+    if (!confirm('删除？')) return;
+    const u = existingItems.filter(x => x.id !== id);
+    localStorage.setItem(STORAGE_KEY + activeModule, JSON.stringify(u));
+    setExistingItems(u);
   };
 
-  const removeVideo = (index: number) => {
-    const newVideos = videoPreviews.filter((_, i) => i !== index);
-    setVideoPreviews(newVideos);
-    setFormData({ ...formData, videos: newVideos });
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
-  };
-
-  const deleteItem = async (id: string) => {
-    if (!confirm('确定要删除这条记录吗？')) return;
-    await deleteFromIndexedDB(id);
-    loadFromIndexedDB();
-  };
-
-  const handleSave = async () => {
-    if (!formData.name) {
-      setSaveStatus('请填写项目名称');
-      setTimeout(() => setSaveStatus(''), 3000);
-      return;
-    }
-    setSaving(true);
-    setSaveStatus('正在保存...');
+  const handleSave = () => {
+    if (!formData.name) { setSaveStatus('请填写项目名称'); setTimeout(() => setSaveStatus(''), 3000); return; }
+    setSaving(true); setSaveStatus('保存中...');
     try {
-      await saveToIndexedDB(activeModule, formData);
+      const item: SavedItem = { id: `${activeModule}_${Date.now()}`, moduleId: activeModule, data: { ...formData }, timestamp: new Date().toISOString() };
+      const u = [...existingItems, item];
+      localStorage.setItem(STORAGE_KEY + activeModule, JSON.stringify(u));
       setSaveStatus('保存成功！');
       setFormData({ name: '', category: '', description: '', price: '', rating: '', images: [], videos: [], address: '', phone: '' });
-      setImagePreviews([]);
-      setVideoPreviews([]);
-      loadFromIndexedDB();
-    } catch (error) {
-      console.error('Save error:', error);
-      setSaveStatus('保存失败');
-    }
-    setSaving(false);
-    setTimeout(() => setSaveStatus(''), 3000);
+      setImagePreviews([]); setVideoPreviews([]); setExistingItems(u);
+    } catch { setSaveStatus('保存失败'); }
+    setSaving(false); setTimeout(() => setSaveStatus(''), 3000);
   };
 
-  const editItem = (item: SavedItem) => {
-    setFormData(item.data);
-    setImagePreviews(item.data.images || []);
-    setVideoPreviews(item.data.videos || []);
-  };
+  const editItem = (item: SavedItem) => { setFormData(item.data); setImagePreviews(item.data.images || []); setVideoPreviews(item.data.videos || []); };
 
   if (!isAuthenticated) return null;
 
@@ -271,134 +188,65 @@ export default function AdminDashboard() {
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-4">
             <Link href="/" className="w-10 h-10 rounded-full bg-gradient-to-br from-[#FFD700] to-[#D4AF37] flex items-center justify-center text-[#0D0D0D] font-bold"><span className="font-art">新</span></Link>
-            <div>
-              <h1 className="text-xl font-bold text-[#FFD700] font-art">后台管理系统</h1>
-              <p className="text-xs text-[#8B7355]">小新带你游汕头</p>
-            </div>
+            <div><h1 className="text-xl font-bold text-[#FFD700] font-art">后台管理系统</h1><p className="text-xs text-[#8B7355]">小新带你游汕头</p></div>
           </div>
-          <button onClick={handleLogout} className="px-4 py-2 bg-[#1F1F1F] border border-[#3D3D3D] rounded-lg text-[#FFD700] hover:bg-[#FFD700] hover:text-[#0D0D0D] transition-all font-art">退出登录</button>
+          <button onClick={handleLogout} className="px-4 py-2 bg-[#1F1F1F] border border-[#3D3D3D] rounded-lg text-[#FFD700] hover:bg-[#FFD700] hover:text-[#0D0D0D]">退出登录</button>
         </div>
       </header>
-
       <div className="max-w-7xl mx-auto px-6 py-8">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {stats.map((stat, i) => (
-            <div key={i} className="bg-[#141414] p-6 rounded-xl border border-[#2D2D2D] hover:border-[#FFD700] transition-all">
-              <div className="text-3xl mb-2">{stat.icon}</div>
-              <div className="text-2xl font-bold text-[#FFD700] font-art">{stat.value}</div>
-              <div className="text-sm text-[#8B7355]">{stat.label}</div>
-            </div>
-          ))}
+          {stats.map((s, i) => (<div key={i} className="bg-[#141414] p-6 rounded-xl border border-[#2D2D2D]"><div className="text-3xl mb-2">{s.icon}</div><div className="text-2xl font-bold text-[#FFD700]">{s.value}</div><div className="text-sm text-[#8B7355]">{s.label}</div></div>))}
         </div>
-
-        <div className="bg-[#141414] rounded-2xl border border-[#2D2D2D] overflow-hidden">
-          <div className="p-6 border-b border-[#2D2D2D]">
-            <h2 className="text-2xl font-bold text-[#FFD700] font-art glow-text">模块管理</h2>
-            <p className="text-[#8B7355] mt-1">管理各个板块的内容，包括文字描述、图片、视频上传</p>
-          </div>
-
+        <div className="bg-[#141414] rounded-2xl border border-[#2D2D2D]">
+          <div className="p-6 border-b border-[#2D2D2D]"><h2 className="text-2xl font-bold text-[#FFD700]">模块管理</h2><p className="text-[#8B7355] text-sm">管理各个板块的内容，图片、视频上传</p></div>
           <div className="flex overflow-x-auto gap-2 p-4 border-b border-[#2D2D2D]">
-            {modules.map((module) => (
-              <button key={module.id} onClick={() => { setActiveModule(module.id); setFormData({ name: '', category: '', description: '', price: '', rating: '', images: [], videos: [], address: '', phone: '' }); setImagePreviews([]); setVideoPreviews([]); }} className={`flex items-center gap-2 px-4 py-2 rounded-lg whitespace-nowrap transition-all font-art ${activeModule === module.id ? 'bg-[#FFD700] text-[#0D0D0D]' : 'bg-[#1F1F1F] text-[#C9A227] hover:bg-[#2D2D2D]'}`}>
-                <span>{module.icon}</span><span>{module.name}</span>
-              </button>
-            ))}
+            {modules.map(m => (<button key={m.id} onClick={() => { setActiveModule(m.id); setFormData({ name: '', category: '', description: '', price: '', rating: '', images: [], videos: [], address: '', phone: '' }); setImagePreviews([]); setVideoPreviews([]); }} className={`flex items-center gap-2 px-4 py-2 rounded-lg whitespace-nowrap ${activeModule === m.id ? 'bg-[#FFD700] text-[#0D0D0D]' : 'bg-[#1F1F1F] text-[#C9A227]'}`}><span>{m.icon}</span><span>{m.name}</span></button>))}
           </div>
-
           <div className="p-6">
-            {modules.filter(m => m.id === activeModule).map(module => (
-              <div key={module.id}>
-                <div className="flex justify-between items-center mb-6">
-                  <div>
-                    <h3 className="text-xl font-bold text-[#FFD700] font-art">{module.icon} {module.name}</h3>
-                    <p className="text-[#8B7355] text-sm">{module.description} - 共 {module.count + existingItems.length} 条</p>
-                  </div>
-                </div>
-
+            {modules.filter(m => m.id === activeModule).map(m => (
+              <div key={m.id}>
+                <div className="mb-6"><h3 className="text-xl font-bold text-[#FFD700]">{m.icon} {m.name}</h3><p className="text-[#8B7355] text-sm">{m.description} - 共 {m.count + existingItems.length} 条</p></div>
                 <div className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div><label className="block text-[#FFD700] text-sm font-medium mb-2 font-art">项目名称 *</label><input type="text" name="name" value={formData.name} onChange={handleInputChange} className="w-full h-12 px-4 bg-[#1F1F1F] border border-[#3D3D3D] rounded-lg focus:border-[#FFD700] outline-none text-[#FFD700] placeholder-[#8B7355]" placeholder="请输入项目名称" /></div>
-                    <div><label className="block text-[#FFD700] text-sm font-medium mb-2 font-art">分类</label><select name="category" value={formData.category} onChange={handleInputChange} className="w-full h-12 px-4 bg-[#1F1F1F] border border-[#3D3D3D] rounded-lg focus:border-[#FFD700] outline-none text-[#FFD700]"><option value="">请选择分类</option><option>热门推荐</option><option>最新上线</option></select></div>
+                    <div><label className="block text-[#FFD700] text-sm mb-2">项目名称 *</label><input type="text" name="name" value={formData.name} onChange={handleInputChange} className="w-full h-12 px-4 bg-[#1F1F1F] border border-[#3D3D3D] rounded-lg focus:border-[#FFD700] outline-none text-[#FFD700]" placeholder="请输入项目名称" /></div>
+                    <div><label className="block text-[#FFD700] text-sm mb-2">分类</label><select name="category" value={formData.category} onChange={handleInputChange} className="w-full h-12 px-4 bg-[#1F1F1F] border border-[#3D3D3D] rounded-lg focus:border-[#FFD700] outline-none text-[#FFD700]"><option value="">请选择</option><option>热门推荐</option><option>最新上线</option></select></div>
                   </div>
-                  <div><label className="block text-[#FFD700] text-sm font-medium mb-2 font-art">详细介绍</label><textarea name="description" value={formData.description} onChange={handleInputChange} className="w-full h-32 px-4 py-3 bg-[#1F1F1F] border border-[#3D3D3D] rounded-lg focus:border-[#FFD700] outline-none text-[#FFD700] placeholder-[#8B7355] resize-none" placeholder="请输入详细介绍" /></div>
+                  <div><label className="block text-[#FFD700] text-sm mb-2">详细介绍</label><textarea name="description" value={formData.description} onChange={handleInputChange} className="w-full h-32 px-4 py-3 bg-[#1F1F1F] border border-[#3D3D3D] rounded-lg focus:border-[#FFD700] outline-none text-[#FFD700] resize-none" placeholder="请输入详细介绍" /></div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div><label className="block text-[#FFD700] text-sm font-medium mb-2 font-art">价格</label><input type="text" name="price" value={formData.price} onChange={handleInputChange} className="w-full h-12 px-4 bg-[#1F1F1F] border border-[#3D3D3D] rounded-lg focus:border-[#FFD700] outline-none text-[#FFD700] placeholder-[#8B7355]" placeholder="如: ¥80/人" /></div>
-                    <div><label className="block text-[#FFD700] text-sm font-medium mb-2 font-art">评分</label><input type="text" name="rating" value={formData.rating} onChange={handleInputChange} className="w-full h-12 px-4 bg-[#1F1F1F] border border-[#3D3D3D] rounded-lg focus:border-[#FFD700] outline-none text-[#FFD700] placeholder-[#8B7355]" placeholder="如: 4.8" /></div>
+                    <div><label className="block text-[#FFD700] text-sm mb-2">价格</label><input type="text" name="price" value={formData.price} onChange={handleInputChange} className="w-full h-12 px-4 bg-[#1F1F1F] border border-[#3D3D3D] rounded-lg focus:border-[#FFD700] outline-none text-[#FFD700]" placeholder="如: ¥80/人" /></div>
+                    <div><label className="block text-[#FFD700] text-sm mb-2">评分</label><input type="text" name="rating" value={formData.rating} onChange={handleInputChange} className="w-full h-12 px-4 bg-[#1F1F1F] border border-[#3D3D3D] rounded-lg focus:border-[#FFD700] outline-none text-[#FFD700]" placeholder="如: 4.8" /></div>
                   </div>
-
                   <div>
-                    <label className="block text-[#FFD700] text-sm font-medium mb-2 font-art">图片上传（可多选）</label>
+                    <label className="block text-[#FFD700] text-sm mb-2">图片上传（自动压缩）</label>
                     <input type="file" ref={imageInputRef} accept="image/*" multiple onChange={handleImageUpload} className="hidden" />
-                    <div onClick={() => imageInputRef.current?.click()} className="border-2 border-dashed border-[#3D3D3D] rounded-xl p-4 text-center hover:border-[#FFD700] transition-colors cursor-pointer mb-3">
-                      <svg className="w-8 h-8 mx-auto text-[#8B7355] mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                      <p className="text-[#8B7355] text-sm">点击选择图片（可多选）</p>
-                    </div>
-                    {imagePreviews.length > 0 && (
-                      <div className="grid grid-cols-3 gap-2">
-                        {imagePreviews.map((img, index) => (
-                          <div key={index} className="relative">
-                            <img src={img} alt={`图片${index + 1}`} className="w-full h-24 object-cover rounded-lg" />
-                            <button onClick={() => removeImage(index)} className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-sm hover:bg-red-600">×</button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    <div onClick={() => imageInputRef.current?.click()} className="border-2 border-dashed border-[#3D3D3D] rounded-xl p-4 text-center hover:border-[#FFD700] cursor-pointer mb-3">点击选择图片</div>
+                    {imagePreviews.length > 0 && <div className="grid grid-cols-3 gap-2">{imagePreviews.map((img, i) => <div key={i} className="relative"><img src={img} className="w-full h-24 object-cover rounded-lg" /><button onClick={() => removeImage(i)} className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full">×</button></div>)}</div>}
                   </div>
-
                   <div>
-                    <label className="block text-[#FFD700] text-sm font-medium mb-2 font-art">视频上传（可多选，最大50MB/个）</label>
+                    <label className="block text-[#FFD700] text-sm mb-2">视频上传（最大10MB）</label>
                     <input type="file" ref={videoInputRef} accept="video/*" multiple onChange={handleVideoUpload} className="hidden" />
-                    <div onClick={() => videoInputRef.current?.click()} className="border-2 border-dashed border-[#3D3D3D] rounded-xl p-4 text-center hover:border-[#FFD700] transition-colors cursor-pointer mb-3">
-                      <svg className="w-8 h-8 mx-auto text-[#8B7355] mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                      <p className="text-[#8B7355] text-sm">点击选择视频（可多选）</p>
-                    </div>
-                    {videoPreviews.length > 0 && (
-                      <div className="grid grid-cols-2 gap-2">
-                        {videoPreviews.map((video, index) => (
-                          <div key={index} className="relative">
-                            <video src={video} className="w-full h-24 object-cover rounded-lg" />
-                            <button onClick={() => removeVideo(index)} className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-sm hover:bg-red-600">×</button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    <div onClick={() => videoInputRef.current?.click()} className="border-2 border-dashed border-[#3D3D3D] rounded-xl p-4 text-center hover:border-[#FFD700] cursor-pointer mb-3">点击选择视频</div>
+                    {videoPreviews.length > 0 && <div className="grid grid-cols-2 gap-2">{videoPreviews.map((v, i) => <div key={i} className="relative"><video src={v} className="w-full h-24 object-cover rounded-lg" /><button onClick={() => removeVideo(i)} className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full">×</button></div>)}</div>}
                   </div>
-
-                  <div><label className="block text-[#FFD700] text-sm font-medium mb-2 font-art">地址</label><input type="text" name="address" value={formData.address} onChange={handleInputChange} className="w-full h-12 px-4 bg-[#1F1F1F] border border-[#3D3D3D] rounded-lg focus:border-[#FFD700] outline-none text-[#FFD700] placeholder-[#8B7355]" placeholder="请输入地址" /></div>
-                  <div><label className="block text-[#FFD700] text-sm font-medium mb-2 font-art">联系电话</label><input type="text" name="phone" value={formData.phone} onChange={handleInputChange} className="w-full h-12 px-4 bg-[#1F1F1F] border border-[#3D3D3D] rounded-lg focus:border-[#FFD700] outline-none text-[#FFD700] placeholder-[#8B7355]" placeholder="请输入联系电话" /></div>
-
+                  <div><label className="block text-[#FFD700] text-sm mb-2">地址</label><input type="text" name="address" value={formData.address} onChange={handleInputChange} className="w-full h-12 px-4 bg-[#1F1F1F] border border-[#3D3D3D] rounded-lg focus:border-[#FFD700] outline-none text-[#FFD700]" /></div>
+                  <div><label className="block text-[#FFD700] text-sm mb-2">电话</label><input type="text" name="phone" value={formData.phone} onChange={handleInputChange} className="w-full h-12 px-4 bg-[#1F1F1F] border border-[#3D3D3D] rounded-lg focus:border-[#FFD700] outline-none text-[#FFD700]" /></div>
                   {saveStatus && <div className={`p-3 rounded-lg text-center ${saveStatus.includes('成功') ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>{saveStatus}</div>}
-
-                  <div className="flex gap-4 pt-4">
-                    <button onClick={handleSave} disabled={saving} className="flex-1 h-12 bg-gradient-to-r from-[#FFD700] to-[#D4AF37] text-[#0D0D0D] rounded-lg font-bold hover:shadow-[0_0_20px_rgba(255,215,0,0.4)] transition-all font-art disabled:opacity-50">{saving ? '保存中...' : '保存修改'}</button>
-                    <button onClick={() => { setFormData({ name: '', category: '', description: '', price: '', rating: '', images: [], videos: [], address: '', phone: '' }); setImagePreviews([]); setVideoPreviews([]); }} className="px-6 h-12 bg-[#1F1F1F] border border-[#3D3D3D] text-[#C9A227] rounded-lg font-bold hover:bg-[#2D2D2D] transition-all font-art">清空</button>
+                  <div className="flex gap-4">
+                    <button onClick={handleSave} disabled={saving} className="flex-1 h-12 bg-gradient-to-r from-[#FFD700] to-[#D4AF37] text-[#0D0D0D] rounded-lg font-bold disabled:opacity-50">{saving ? '保存中...' : '保存修改'}</button>
+                    <button onClick={() => { setFormData({ name: '', category: '', description: '', price: '', rating: '', images: [], videos: [], address: '', phone: '' }); setImagePreviews([]); setVideoPreviews([]); }} className="px-6 h-12 bg-[#1F1F1F] border border-[#3D3D3D] text-[#C9A227] rounded-lg">清空</button>
                   </div>
                 </div>
               </div>
             ))}
           </div>
-
           {existingItems.length > 0 && (
-            <div className="mt-8 bg-[#141414] rounded-2xl border border-[#2D2D2D] overflow-hidden">
-              <div className="p-6 border-b border-[#2D2D2D]">
-                <h3 className="text-xl font-bold text-[#FFD700] font-art">已发布的内容</h3>
-                <p className="text-[#8B7355] text-sm mt-1">共 {existingItems.length} 条记录</p>
-              </div>
+            <div className="mt-8 border-t border-[#2D2D2D]">
+              <div className="p-6 border-b border-[#2D2D2D]"><h3 className="text-xl font-bold text-[#FFD700]">已发布 ({existingItems.length})</h3></div>
               <div className="divide-y divide-[#2D2D2D]">
-                {existingItems.map((item) => (
-                  <div key={item.id} className="p-4 flex items-center gap-4 hover:bg-[#1F1F1F] transition-colors">
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-[#FFD700] font-bold truncate">{item.data.name}</h4>
-                      <p className="text-[#8B7355] text-sm truncate">{item.data.description || '暂无描述'}</p>
-                      <div className="flex gap-2 mt-2">
-                        {item.data.images?.length > 0 && <span className="text-xs bg-[#FFD700]/20 text-[#FFD700] px-2 py-1 rounded">📷 {item.data.images.length}张图片</span>}
-                        {item.data.videos?.length > 0 && <span className="text-xs bg-[#FFD700]/20 text-[#FFD700] px-2 py-1 rounded">🎬 {item.data.videos.length}个视频</span>}
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <button onClick={() => editItem(item)} className="px-3 py-1 bg-[#FFD700] text-[#0D0D0D] rounded text-sm font-bold hover:shadow-[0_0_10px_rgba(255,215,0,0.4)] transition-all">编辑</button>
-                      <button onClick={() => deleteItem(item.id)} className="px-3 py-1 bg-red-500 text-white rounded text-sm font-bold hover:bg-red-600 transition-all">删除</button>
-                    </div>
+                {existingItems.map(item => (
+                  <div key={item.id} className="p-4 flex items-center gap-4">
+                    <div className="flex-1"><h4 className="text-[#FFD700] font-bold">{item.data.name}</h4><p className="text-[#8B7355] text-sm">{item.data.description || '暂无'}</p><div className="flex gap-2 mt-2">{item.data.images?.length > 0 && <span className="text-xs bg-[#FFD700]/20 text-[#FFD700] px-2 rounded">📷 {item.data.images.length}</span>}{item.data.videos?.length > 0 && <span className="text-xs bg-[#FFD700]/20 text-[#FFD700] px-2 rounded">🎬 {item.data.videos.length}</span>}</div></div>
+                    <div className="flex gap-2"><button onClick={() => editItem(item)} className="px-3 py-1 bg-[#FFD700] text-[#0D0D0D] rounded text-sm">编辑</button><button onClick={() => deleteItem(item.id)} className="px-3 py-1 bg-red-500 text-white rounded text-sm">删除</button></div>
                   </div>
                 ))}
               </div>

@@ -21,34 +21,15 @@ interface AdminItem {
   timestamp: string;
 }
 
-// IndexedDB helper
-const DB_NAME = 'XiaoxinAdminDB';
-const STORE_NAME = 'adminData';
+// Use localStorage with module-specific keys
+const STORAGE_KEY = 'xiaoxin_admin_';
 
-const openDB = (): Promise<IDBDatabase> => {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, 1);
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve(request.result);
-  });
-};
-
-const getAllFromIndexedDB = async (moduleId: string): Promise<AdminItem[]> => {
+const getAllFromStorage = (moduleId: string): AdminItem[] => {
   try {
-    const db = await openDB();
-    const tx = db.transaction(STORE_NAME, 'readonly');
-    const store = tx.objectStore(STORE_NAME);
-    const request = store.getAll();
-    
-    return new Promise((resolve) => {
-      request.onsuccess = () => {
-        const results = request.result.filter((item: AdminItem) => item.moduleId === moduleId);
-        resolve(results);
-      };
-      request.onerror = () => resolve([]);
-    });
-  } catch (error) {
-    console.error('IndexedDB get error:', error);
+    const key = STORAGE_KEY + moduleId;
+    const data = localStorage.getItem(key);
+    return data ? JSON.parse(data) : [];
+  } catch (e) {
     return [];
   }
 };
@@ -60,9 +41,9 @@ export default function FoodPage() {
   const [isClient, setIsClient] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const loadData = async () => {
+  const loadData = () => {
     try {
-      const foodItems = await getAllFromIndexedDB('food');
+      const foodItems = getAllFromStorage('food');
       setAdminData(foodItems);
       setIsClient(true);
     } catch (e) {
@@ -73,24 +54,12 @@ export default function FoodPage() {
   useEffect(() => {
     loadData();
     
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'adminData' || e.key === 'publicData') {
-        loadData();
-      }
-    };
-    
-    const handleDataUpdate = () => {
-      loadData();
-      setRefreshKey(k => k + 1);
-    };
-    
-    window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('adminDataUpdate', handleDataUpdate);
-    
+    const handleDataUpdate = () => loadData();
     const interval = setInterval(loadData, 2000);
     
+    window.addEventListener('adminDataUpdate', handleDataUpdate);
+    
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('adminDataUpdate', handleDataUpdate);
       clearInterval(interval);
     };
