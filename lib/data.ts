@@ -10,8 +10,8 @@ export const categories = [
   { id: 'home-service', name: '家·家政', icon: '🧹', color: '#FFD700', description: '家政服务平台' },
   { id: 'jobs', name: '求职招聘', icon: '💼', color: '#FFD700', description: '找工作招人才' },
   { id: 'wellness', name: '运动与养生', icon: '🧘', color: '#FFD700', description: '健康生活' },
+  { id: 'pet', name: '养·宠物', icon: '🐕', color: '#FFD700', description: '宠物服务平台' },
   { id: 'orders', name: '订单中心', icon: '📋', color: '#FFD700', description: '我的订单' },
-  { id: 'merchant', name: '商家入驻', icon: '🏪', color: '#FFD700', description: '成为商家' },
 ];
 
 // 潮汕特色图片集
@@ -503,6 +503,62 @@ export const wellnessData = [
     tags: ['推拿', '艾灸', '拔罐'],
     description: '中医养生馆，推拿艾灸，舒缓疲劳',
     hours: '10:00-22:00',
+  },
+];
+
+// 宠物数据
+export const petData = [
+  {
+    id: 1,
+    name: '萌宠宠物会所',
+    category: '宠物店',
+    rating: 4.8,
+    price: '¥50/次',
+    address: '龙湖区长平路98号',
+    phone: '0754-88991234',
+    image: 'https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=800',
+    tags: ['洗澡', '美容', '寄养'],
+    description: '专业宠物美容，洗澡、SPA、造型一条龙',
+    hours: '09:00-21:00',
+  },
+  {
+    id: 2,
+    name: '汪星人宠物医院',
+    category: '宠物医疗',
+    rating: 4.9,
+    price: '¥100/次',
+    address: '金平区金砂路56号',
+    phone: '0754-88561234',
+    image: 'https://images.unsplash.com/photo-1548767797-d8c844163c4c?w=800',
+    tags: ['疫苗', '体检', '手术'],
+    description: '专业宠物医院，疫苗、体检、诊疗服务',
+    hours: '08:00-20:00',
+  },
+  {
+    id: 3,
+    name: '宠乐多宠物店',
+    category: '宠物店',
+    rating: 4.7,
+    price: '¥30/次',
+    address: '龙湖区衡山路42号',
+    phone: '0754-88871234',
+    image: 'https://images.unsplash.com/photo-1601758228041-f3b2795255f1?w=800',
+    tags: ['宠物食品', '玩具', '零食'],
+    description: '宠物食品用品一站式购物，品种齐全',
+    hours: '09:00-22:00',
+  },
+  {
+    id: 4,
+    name: '毛孩子训犬学校',
+    category: '宠物训练',
+    rating: 4.6,
+    price: '¥2000/期',
+    address: '濠江区河浦大道',
+    phone: '0754-87371234',
+    image: 'https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=800',
+    tags: ['行为训练', '技能培训', '寄训'],
+    description: '专业训犬师，宠物行为纠正，技能培训',
+    hours: '08:00-18:00',
   },
 ];
 
