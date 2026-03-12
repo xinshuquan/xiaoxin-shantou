@@ -141,16 +141,15 @@ export default function AdminDashboard() {
         return;
       }
       
-      setSaveStatus('上传视频中...');
+      setSaveStatus('处理视频中...');
       const newVideos: string[] = [];
       const newPreviews: string[] = [];
       
+      // 先尝试云端上传
+      let cloudUploadSuccess = false;
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         try {
-          let videoUrl = '';
-          
-          // Upload to our API which uses server-side Vercel Blob
           const formData = new FormData();
           formData.append('file', file);
           
@@ -159,24 +158,50 @@ export default function AdminDashboard() {
             body: formData,
           });
           
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ error: 'Upload failed', details: '' }));
-            const fullError = errorData.details ? `${errorData.error}\n(${errorData.details})` : errorData.error;
-            throw new Error(fullError);
+          if (response.ok) {
+            const result = await response.json();
+            newVideos.push(result.url);
+            newPreviews.push(URL.createObjectURL(file));
+            cloudUploadSuccess = true;
+          }
+        } catch (e) {
+          // 云端上传失败，继续用本地
+        }
+      }
+      
+      // 如果云端失败，使用 base64（仅支持小视频）
+      if (!cloudUploadSuccess) {
+        setSaveStatus('使用本地存储...');
+        
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          
+          // 建议小于 3MB
+          if (file.size > 3 * 1024 * 1024) {
+            alert('⚠️ 云端存储未配置成功\n\n当前使用本地存储，但只能支持小于 3MB 的小视频。\n\n要支持大视频，请在 Vercel 控制台的 Storage 中确认 Blob Store 已正确创建并连接到项目。');
+            continue;
           }
           
-          const result = await response.json();
-          videoUrl = result.url;
-          setSaveStatus('✓ 视频上传成功（云端存储）');
-          
-          newVideos.push(videoUrl);
-          // Create object URL for preview
-          newPreviews.push(URL.createObjectURL(file));
-        } catch (error) {
-          console.error('Upload error:', error);
-          const errorMsg = error instanceof Error ? error.message : '未知错误';
-          alert(`上传失败: ${errorMsg}`);
+          try {
+            const base64 = await new Promise<string>((resolve) => {
+              const reader = new FileReader();
+              reader.onload = (e) => resolve(e.target?.result as string);
+              reader.readAsDataURL(file);
+            });
+            newVideos.push(base64);
+            newPreviews.push(URL.createObjectURL(file));
+          } catch (e) {
+            alert('视频处理失败');
+          }
         }
+      }
+      
+      if (newVideos.length > 0) {
+        setVideoPreviews(p => [...p, ...newPreviews]);
+        setFormData(d => ({ ...d, videos: [...d.videos, ...newVideos] }));
+        setSaveStatus(cloudUploadSuccess ? '✓ 视频上传成功（云端）' : '✓ 视频已添加（本地存储，保存时可能失败）');
+      } else {
+        setSaveStatus('');
       }
       
       if (newVideos.length > 0) {
@@ -212,12 +237,10 @@ export default function AdminDashboard() {
     const dataSize = JSON.stringify(formData).length;
     const sizeInMB = (dataSize / (1024 * 1024)).toFixed(2);
     
-    // 检查是否有本地存储的视频（base64）
+    // 检查是否有本地存储的视频（base64），给提示但不阻止
     const hasLocalVideo = formData.videos.some((v: string) => v.startsWith('data:video'));
     if (hasLocalVideo) {
-      setSaveStatus('检测到本地视频（未上传到云端）。请确保已配置 Vercel Blob，或使用更小的视频文件。');
-      setTimeout(() => setSaveStatus(''), 8000);
-      return;
+      setSaveStatus('⚠️ 视频存在本地存储中，保存可能失败（建议使用小于 2MB 的视频）');
     }
     
     if (dataSize > 8 * 1024 * 1024) {
