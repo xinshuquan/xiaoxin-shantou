@@ -22,6 +22,7 @@ interface FormData {
   videos: string[];
   address: string;
   phone: string;
+  moduleName?: string;
 }
 
 interface SavedItem {
@@ -58,6 +59,20 @@ export default function AdminDashboard() {
     const allData = JSON.parse(localStorage.getItem('adminData') || '{}');
     const moduleData = allData[activeModule] || [];
     setExistingItems(moduleData);
+    // Reset form when module changes
+    setFormData({
+      name: '',
+      category: '',
+      description: '',
+      price: '',
+      rating: '',
+      images: [],
+      videos: [],
+      address: '',
+      phone: '',
+    });
+    setImagePreviews([]);
+    setVideoPreviews([]);
   }, [activeModule]);
 
   useEffect(() => {
@@ -202,9 +217,15 @@ export default function AdminDashboard() {
     setSaving(true);
     setSaveStatus('');
 
+    // Get current module name
+    const currentModule = modules.find(m => m.id === activeModule);
+    
     const saveData: SavedItem = {
       id: Date.now().toString(),
-      data: formData,
+      data: {
+        ...formData,
+        moduleName: currentModule?.name || activeModule,
+      },
       timestamp: new Date().toISOString(),
     };
 
@@ -247,7 +268,17 @@ export default function AdminDashboard() {
 
   // Edit existing item
   const editItem = (item: SavedItem) => {
-    setFormData(item.data);
+    setFormData({
+      name: item.data.name || '',
+      category: item.data.category || '',
+      description: item.data.description || '',
+      price: item.data.price || '',
+      rating: item.data.rating || '',
+      images: item.data.images || [],
+      videos: item.data.videos || [],
+      address: item.data.address || '',
+      phone: item.data.phone || '',
+    });
     setImagePreviews(item.data.images || []);
     setVideoPreviews(item.data.videos || []);
   };

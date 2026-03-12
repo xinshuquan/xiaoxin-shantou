@@ -16,6 +16,7 @@ interface AdminItem {
     videos: string[];
     address: string;
     phone: string;
+    moduleName: string;
   };
   timestamp: string;
 }
@@ -24,17 +25,19 @@ export default function FoodPage() {
   const category = categories[0];
   const categories_list = ['全部', '潮汕菜', '火锅', '烧烤', '小吃', '甜品', '快餐'];
   const [adminData, setAdminData] = useState<AdminItem[]>([]);
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
+    setIsClient(true);
     // Load admin data from localStorage
-    const allData = JSON.parse(localStorage.getItem('publicData') || localStorage.getItem('adminData') || '{}');
+    const allData = JSON.parse(localStorage.getItem('adminData') || '{}');
     const foodItems = allData['food'] || [];
     setAdminData(foodItems);
   }, []);
 
   // Combine default data with admin data
-  const allFoodData = [
-    ...adminData.map((item, index) => ({
+  const allFoodData = isClient ? [
+    ...adminData.map((item) => ({
       id: `admin-${item.id}`,
       name: item.data.name,
       category: item.data.category || '其他',
@@ -42,7 +45,7 @@ export default function FoodPage() {
       price: item.data.price || '¥0',
       address: item.data.address || '',
       phone: item.data.phone || '',
-      image: item.data.images?.[0] || 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800',
+      image: item.data.images && item.data.images.length > 0 ? item.data.images[0] : 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800',
       images: item.data.images || [],
       videos: item.data.videos || [],
       tags: item.data.description ? [item.data.description.slice(0, 20)] : [],
@@ -51,7 +54,7 @@ export default function FoodPage() {
       isAdminAdded: true,
     })),
     ...foodData.map(item => ({ ...item, isAdminAdded: false })),
-  ];
+  ] : foodData.map(item => ({ ...item, isAdminAdded: false }));
 
   return (
     <div className="min-h-screen bg-[#0A0A0A]">
@@ -86,7 +89,7 @@ export default function FoodPage() {
 
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {adminData.length > 0 && (
+        {isClient && adminData.length > 0 && (
           <div className="mb-4 p-3 bg-[#FFD700]/10 border border-[#FFD700]/30 rounded-xl">
             <span className="text-[#FFD700] text-sm">后台新增了 {adminData.length} 条内容</span>
           </div>
@@ -103,6 +106,9 @@ export default function FoodPage() {
                   src={item.image}
                   alt={item.name}
                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800';
+                  }}
                 />
                 <div className="absolute top-3 right-3 px-3 py-1 bg-[#FFD700] text-[#0D0D0D] text-xs font-bold rounded-full">
                   {item.category}
@@ -110,6 +116,11 @@ export default function FoodPage() {
                 {item.isAdminAdded && (
                   <div className="absolute top-3 left-3 px-2 py-1 bg-[#E91E63] text-white text-xs font-bold rounded-full">
                     新增
+                  </div>
+                )}
+                {item.images && item.images.length > 1 && (
+                  <div className="absolute bottom-3 right-3 px-2 py-1 bg-black/60 text-white text-xs rounded-full">
+                    📷 {item.images.length}
                   </div>
                 )}
               </div>
@@ -125,6 +136,11 @@ export default function FoodPage() {
                       {tag}
                     </span>
                   ))}
+                  {item.videos && item.videos.length > 0 && (
+                    <span className="px-2 py-1 bg-[#E91E63]/20 text-[#E91E63] text-xs rounded border border-[#E91E63]">
+                      🎬 {item.videos.length}个视频
+                    </span>
+                  )}
                 </div>
 
                 <div className="flex items-center justify-between pt-3 border-t border-[#2D2D2D]">
