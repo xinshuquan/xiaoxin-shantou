@@ -16,14 +16,14 @@ export default function Header() {
         <div className="flex items-center justify-between h-[72px]">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#FFD700] to-[#D4AF37] flex items-center justify-center text-[#0D0D0D] text-2xl font-bold shadow-lg group-hover:scale-110 transition-all duration-300 group-hover:animate-pulse-glow">
-              <span className="font-art">新</span>
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#FFD700] to-[#D4AF37] flex items-center justify-center text-[#0D0D0D] text-2xl font-bold shadow-lg group-hover:scale-110 transition-all duration-300 group-hover:animate-pulse-glow border-2 border-[#FFD700]">
+              <span className="font-calligraphy">新</span>
             </div>
             <div className="hidden sm:block">
-              <h1 className="text-lg font-bold text-[#FFD700] leading-tight font-art glow-text">
+              <h1 className="text-lg font-bold text-[#FFD700] leading-tight font-calligraphy glow-text">
                 小新带你游汕头
               </h1>
-              <p className="text-xs text-[#8B7355] font-art">吃喝玩乐不用愁！</p>
+              <p className="text-xs text-[#8B7355] font-calligraphy">吃喝玩乐不用愁！</p>
             </div>
           </Link>
 

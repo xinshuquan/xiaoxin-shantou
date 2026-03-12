@@ -1,27 +1,7 @@
 import type { Metadata } from "next";
-import { Noto_Sans_SC, Noto_Serif_SC } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
-
-const notoSans = Noto_Sans_SC({
-  variable: "--font-noto-sans",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-});
-
-const notoSerif = Noto_Serif_SC({
-  variable: "--font-noto-serif",
-  subsets: ["latin"],
-  weight: ["400", "600", "700"],
-});
-
-// 艺术字体
-const artisticFont = {
-  variable: "--font-artistic",
-  subsets: ["latin"] as const,
-  weight: "400" as const,
-};
 
 export const metadata: Metadata = {
   title: "小新带你游汕头 - 吃喝玩乐不用愁！",
@@ -39,9 +19,9 @@ export default function RootLayout({
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=ZCOOL+KuaiLe&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700;900&family=Ma+Shan+Zheng&family=ZCOOL+KuaiLe&family=LXGW&display=swap" rel="stylesheet" />
       </head>
-      <body className={`${notoSans.variable} ${notoSerif.variable} antialiased`}>
+      <body className="antialiased">
         <Header />
         <main className="min-h-screen pt-[72px]">
           {children}

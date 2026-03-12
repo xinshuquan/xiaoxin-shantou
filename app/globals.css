@@ -63,9 +63,27 @@
 body {
   background: var(--background);
   color: var(--text-primary);
-  font-family: "Noto Serif SC", "Microsoft YaHei", serif;
+  font-family: "Noto Serif SC", "Microsoft YaHei", "LXGW", serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* 高端字体 */
+.font-premium {
+  font-family: "Noto Serif SC", "LXGW", serif;
+  font-weight: 600;
+}
+
+.font-luxury {
+  font-family: "Noto Serif SC", serif;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+/* 书法字体 - 用于潮汕大字 */
+.font-calligraphy {
+  font-family: "Ma Shan Zheng", cursive;
+  font-weight: 400;
 }
 
 /* 艺术字体 - 用于标题 */
@@ -79,6 +97,56 @@ body {
 
 .font-cute {
   font-family: "ZCOOL KuaiLe", cursive;
+}
+
+/* 圆形图片 */
+.img-circle {
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* 圆形带边框 */
+.img-circle-border {
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--primary);
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+}
+
+/* 模糊背景 */
+.blur-background {
+  filter: blur(10px);
+  -webkit-filter: blur(10px);
+}
+
+.blur-medium {
+  filter: blur(5px);
+  -webkit-filter: blur(5px);
+}
+
+.blur-light {
+  filter: blur(2px);
+  -webkit-filter: blur(2px);
+}
+
+/* 动态模糊效果 */
+@keyframes blur-move {
+  0% {
+    filter: blur(0px);
+    transform: scale(1);
+  }
+  50% {
+    filter: blur(3px);
+    transform: scale(1.02);
+  }
+  100% {
+    filter: blur(0px);
+    transform: scale(1);
+  }
+}
+
+.animate-blur-move {
+  animation: blur-move 5s ease-in-out infinite;
 }
 
 /* 金色文字 */
