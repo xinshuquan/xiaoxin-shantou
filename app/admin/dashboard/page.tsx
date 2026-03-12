@@ -157,13 +157,15 @@ export default function AdminDashboard() {
               handleUploadUrl: '/api/upload',
             });
             videoUrl = blob.url;
-          } catch (blobError) {
+            setSaveStatus('✓ 视频上传成功（云端存储）');
+          } catch (blobError: any) {
             console.warn('Vercel Blob upload failed, using fallback:', blobError);
             // Fallback: convert to base64 for small videos only
-            if (file.size > 10 * 1024 * 1024) {
-              alert('云存储未配置，无法上传大视频。请先配置 Vercel Blob 环境。');
+            if (file.size > 8 * 1024 * 1024) {
+              alert(`云存储未配置，8MB以上的视频无法上传。当前: ${(file.size/1024/1024).toFixed(1)}MB\n\n请在 Vercel 控制台创建 Blob Store。`);
               continue;
             }
+            setSaveStatus('⚠ 云存储未配置，视频将存本地（可能保存失败）');
             videoUrl = await new Promise<string>((resolve) => {
               const reader = new FileReader();
               reader.onload = (ev) => resolve(ev.target?.result as string);
@@ -209,10 +211,20 @@ export default function AdminDashboard() {
   const handleSave = () => {
     if (!formData.name) { setSaveStatus('请填写项目名称'); setTimeout(() => setSaveStatus(''), 3000); return; }
     
-    // Check data size before saving
+    // Check data size before saving (localStorage typically has 5-10MB limit)
     const dataSize = JSON.stringify(formData).length;
-    if (dataSize > 4 * 1024 * 1024) {
-      setSaveStatus('数据过大，请减少图片/视频数量或使用更小的文件');
+    const sizeInMB = (dataSize / (1024 * 1024)).toFixed(2);
+    
+    // 检查是否有本地存储的视频（base64）
+    const hasLocalVideo = formData.videos.some((v: string) => v.startsWith('data:video'));
+    if (hasLocalVideo) {
+      setSaveStatus('检测到本地视频（未上传到云端）。请确保已配置 Vercel Blob，或使用更小的视频文件。');
+      setTimeout(() => setSaveStatus(''), 8000);
+      return;
+    }
+    
+    if (dataSize > 8 * 1024 * 1024) {
+      setSaveStatus(`数据过大 (${sizeInMB}MB)，请减少图片数量或使用更小的图片文件`);
       setTimeout(() => setSaveStatus(''), 5000);
       return;
     }
