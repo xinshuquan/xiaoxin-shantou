@@ -160,8 +160,9 @@ export default function AdminDashboard() {
           });
           
           if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ error: 'Upload failed' }));
-            throw new Error(errorData.error || 'Upload failed');
+            const errorData = await response.json().catch(() => ({ error: 'Upload failed', details: '' }));
+            const fullError = errorData.details ? `${errorData.error}\n(${errorData.details})` : errorData.error;
+            throw new Error(fullError);
           }
           
           const result = await response.json();
