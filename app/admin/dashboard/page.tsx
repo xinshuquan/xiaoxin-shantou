@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { upload } from '@vercel/blob/client';
 
 interface ModuleData {
   id: string;
@@ -129,21 +130,62 @@ export default function AdminDashboard() {
     if (imageInputRef.current) imageInputRef.current.value = '';
   };
 
-  const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
+      // Check total size first
+      let totalSize = 0;
+      Array.from(files).forEach(f => totalSize += f.size);
+      
+      if (totalSize > 100 * 1024 * 1024) {
+        alert('视频总大小不能超过100MB');
+        return;
+      }
+      
+      setSaveStatus('上传视频中...');
       const newVideos: string[] = [];
-      let loaded = 0;
-      Array.from(files).forEach((file) => {
-        if (file.size > 100 * 1024 * 1024) { loaded++; return; }
-        const reader = new FileReader();
-        reader.onloadend = () => { newVideos.push(reader.result as string); loaded++; };
-        reader.readAsDataURL(file);
-      });
-      setTimeout(() => {
-        setVideoPreviews(p => [...p, ...newVideos]);
+      const newPreviews: string[] = [];
+      
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        try {
+          // Try Vercel Blob upload first
+          let videoUrl = '';
+          try {
+            const blob = await upload(file.name, file, {
+              access: 'public',
+              handleUploadUrl: '/api/upload',
+            });
+            videoUrl = blob.url;
+          } catch (blobError) {
+            console.warn('Vercel Blob upload failed, using fallback:', blobError);
+            // Fallback: convert to base64 for small videos only
+            if (file.size > 10 * 1024 * 1024) {
+              alert('云存储未配置，无法上传大视频。请先配置 Vercel Blob 环境。');
+              continue;
+            }
+            videoUrl = await new Promise<string>((resolve) => {
+              const reader = new FileReader();
+              reader.onload = (ev) => resolve(ev.target?.result as string);
+              reader.readAsDataURL(file);
+            });
+          }
+          
+          newVideos.push(videoUrl);
+          // Create object URL for preview
+          newPreviews.push(URL.createObjectURL(file));
+        } catch (error) {
+          console.error('Upload error:', error);
+          alert(`上传失败: ${file.name}`);
+        }
+      }
+      
+      if (newVideos.length > 0) {
+        setVideoPreviews(p => [...p, ...newPreviews]);
         setFormData(d => ({ ...d, videos: [...d.videos, ...newVideos] }));
-      }, 500);
+      }
+      
+      setSaveStatus('');
     }
     if (videoInputRef.current) videoInputRef.current.value = '';
   };
@@ -166,6 +208,15 @@ export default function AdminDashboard() {
 
   const handleSave = () => {
     if (!formData.name) { setSaveStatus('请填写项目名称'); setTimeout(() => setSaveStatus(''), 3000); return; }
+    
+    // Check data size before saving
+    const dataSize = JSON.stringify(formData).length;
+    if (dataSize > 4 * 1024 * 1024) {
+      setSaveStatus('数据过大，请减少图片/视频数量或使用更小的文件');
+      setTimeout(() => setSaveStatus(''), 5000);
+      return;
+    }
+    
     setSaving(true); setSaveStatus('保存中...');
     try {
       const item: SavedItem = { id: `${activeModule}_${Date.now()}`, moduleId: activeModule, data: { ...formData }, timestamp: new Date().toISOString() };
@@ -174,7 +225,14 @@ export default function AdminDashboard() {
       setSaveStatus('保存成功！');
       setFormData({ name: '', category: '', description: '', price: '', rating: '', images: [], videos: [], address: '', phone: '' });
       setImagePreviews([]); setVideoPreviews([]); setExistingItems(u);
-    } catch { setSaveStatus('保存失败'); }
+    } catch (err: any) {
+      console.error('Save error:', err);
+      if (err.name === 'QuotaExceededError' || err.message?.includes('quota')) {
+        setSaveStatus('存储空间不足，请删除一些旧数据');
+      } else {
+        setSaveStatus('保存失败，数据可能过大');
+      }
+    }
     setSaving(false); setTimeout(() => setSaveStatus(''), 3000);
   };
 
@@ -223,7 +281,7 @@ export default function AdminDashboard() {
                     {imagePreviews.length > 0 && <div className="grid grid-cols-3 gap-2">{imagePreviews.map((img, i) => <div key={i} className="relative"><img src={img} className="w-full h-24 object-cover rounded-lg" /><button onClick={() => removeImage(i)} className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full">×</button></div>)}</div>}
                   </div>
                   <div>
-                    <label className="block text-[#FFD700] text-sm mb-2">视频上传（最大100MB）</label>
+                    <label className="block text-[#FFD700] text-sm mb-2">视频上传（上传到云端，支持100MB）</label>
                     <input type="file" ref={videoInputRef} accept="video/*" multiple onChange={handleVideoUpload} className="hidden" />
                     <div onClick={() => videoInputRef.current?.click()} className="border-2 border-dashed border-[#3D3D3D] rounded-xl p-4 text-center hover:border-[#FFD700] cursor-pointer mb-3">点击选择视频</div>
                     {videoPreviews.length > 0 && <div className="grid grid-cols-2 gap-2">{videoPreviews.map((v, i) => <div key={i} className="relative"><video src={v} className="w-full h-24 object-cover rounded-lg" /><button onClick={() => removeVideo(i)} className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full">×</button></div>)}</div>}
