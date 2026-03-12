@@ -23,6 +23,8 @@ interface FormData {
   videos: string[];
   address: string;
   phone: string;
+  wechatPay: string;
+  alipay: string;
 }
 
 interface SavedItem {
@@ -68,16 +70,20 @@ export default function AdminDashboard() {
   const [activeModule, setActiveModule] = useState<string>('food');
   const [formData, setFormData] = useState<FormData>({
     name: '', category: '', description: '', price: '', rating: '',
-    images: [], videos: [], address: '', phone: '',
+    images: [], videos: [], address: '', phone: '', wechatPay: '', alipay: '',
   });
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [videoPreviews, setVideoPreviews] = useState<string[]>([]);
+  const [wechatPayPreview, setWechatPayPreview] = useState<string>('');
+  const [alipayPreview, setAlipayPreview] = useState<string>('');
   const [saveStatus, setSaveStatus] = useState<string>('');
   const [saving, setSaving] = useState(false);
   const [existingItems, setExistingItems] = useState<SavedItem[]>([]);
   const [blobConfigured, setBlobConfigured] = useState<boolean | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
+  const wechatPayInputRef = useRef<HTMLInputElement>(null);
+  const alipayInputRef = useRef<HTMLInputElement>(null);
 
   // Test if Blob is configured
   useEffect(() => {
@@ -221,6 +227,30 @@ export default function AdminDashboard() {
     const n = videoPreviews.filter((_, x) => x !== i);
     setVideoPreviews(n); setFormData(d => ({ ...d, videos: n }));
   };
+
+  const handleWechatPayUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      try {
+        const compressed = await compressImage(file, 400);
+        setWechatPayPreview(compressed);
+        setFormData(d => ({ ...d, wechatPay: compressed }));
+      } catch {}
+    }
+    if (wechatPayInputRef.current) wechatPayInputRef.current.value = '';
+  };
+
+  const handleAlipayUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      try {
+        const compressed = await compressImage(file, 400);
+        setAlipayPreview(compressed);
+        setFormData(d => ({ ...d, alipay: compressed }));
+      } catch {}
+    }
+    if (alipayInputRef.current) alipayInputRef.current.value = '';
+  };
   const handleInputChange = (e: any) => setFormData(d => ({ ...d, [e.target.name]: e.target.value }));
   const deleteItem = (id: string) => {
     if (!confirm('删除？')) return;
@@ -252,8 +282,8 @@ export default function AdminDashboard() {
       const u = [...existingItems, item];
       localStorage.setItem(STORAGE_KEY + activeModule, JSON.stringify(u));
       setSaveStatus('保存成功！');
-      setFormData({ name: '', category: '', description: '', price: '', rating: '', images: [], videos: [], address: '', phone: '' });
-      setImagePreviews([]); setVideoPreviews([]); setExistingItems(u);
+      setFormData({ name: '', category: '', description: '', price: '', rating: '', images: [], videos: [], address: '', phone: '', wechatPay: '', alipay: '' });
+      setImagePreviews([]); setVideoPreviews([]); setWechatPayPreview(''); setAlipayPreview(''); setExistingItems(u);
     } catch (err: any) {
       console.error('Save error:', err);
       if (err.name === 'QuotaExceededError' || err.message?.includes('quota')) {
@@ -265,7 +295,13 @@ export default function AdminDashboard() {
     setSaving(false); setTimeout(() => setSaveStatus(''), 3000);
   };
 
-  const editItem = (item: SavedItem) => { setFormData(item.data); setImagePreviews(item.data.images || []); setVideoPreviews(item.data.videos || []); };
+  const editItem = (item: SavedItem) => { 
+    setFormData(item.data); 
+    setImagePreviews(item.data.images || []); 
+    setVideoPreviews(item.data.videos || []); 
+    setWechatPayPreview(item.data.wechatPay || '');
+    setAlipayPreview(item.data.alipay || '');
+  };
 
   if (!isAuthenticated) return null;
 
@@ -292,7 +328,7 @@ export default function AdminDashboard() {
         <div className="bg-[#141414] rounded-2xl border border-[#2D2D2D]">
           <div className="p-6 border-b border-[#2D2D2D]"><h2 className="text-2xl font-bold text-[#FFD700]">模块管理</h2><p className="text-[#8B7355] text-sm">管理各个板块的内容，图片、视频上传</p></div>
           <div className="flex overflow-x-auto gap-2 p-4 border-b border-[#2D2D2D]">
-            {modules.map(m => (<button key={m.id} onClick={() => { setActiveModule(m.id); setFormData({ name: '', category: '', description: '', price: '', rating: '', images: [], videos: [], address: '', phone: '' }); setImagePreviews([]); setVideoPreviews([]); }} className={`flex items-center gap-2 px-4 py-2 rounded-lg whitespace-nowrap ${activeModule === m.id ? 'bg-[#FFD700] text-[#0D0D0D]' : 'bg-[#1F1F1F] text-[#C9A227]'}`}><span>{m.icon}</span><span>{m.name}</span></button>))}
+            {modules.map(m => (<button key={m.id} onClick={() => { setActiveModule(m.id); setFormData({ name: '', category: '', description: '', price: '', rating: '', images: [], videos: [], address: '', phone: '', wechatPay: '', alipay: '' }); setImagePreviews([]); setVideoPreviews([]); setWechatPayPreview(''); setAlipayPreview(''); }} className={`flex items-center gap-2 px-4 py-2 rounded-lg whitespace-nowrap ${activeModule === m.id ? 'bg-[#FFD700] text-[#0D0D0D]' : 'bg-[#1F1F1F] text-[#C9A227]'}`}><span>{m.icon}</span><span>{m.name}</span></button>))}
           </div>
           <div className="p-6">
             {modules.filter(m => m.id === activeModule).map(m => (
@@ -322,10 +358,51 @@ export default function AdminDashboard() {
                   </div>
                   <div><label className="block text-[#FFD700] text-sm mb-2">地址</label><input type="text" name="address" value={formData.address} onChange={handleInputChange} className="w-full h-12 px-4 bg-[#1F1F1F] border border-[#3D3D3D] rounded-lg focus:border-[#FFD700] outline-none text-[#FFD700]" /></div>
                   <div><label className="block text-[#FFD700] text-sm mb-2">电话</label><input type="text" name="phone" value={formData.phone} onChange={handleInputChange} className="w-full h-12 px-4 bg-[#1F1F1F] border border-[#3D3D3D] rounded-lg focus:border-[#FFD700] outline-none text-[#FFD700]" /></div>
+                  {/* 支付方式设置 */}
+                  <div className="border-t border-[#2D2D2D] pt-6 mt-6">
+                    <h4 className="text-lg font-bold text-[#FFD700] mb-4">💳 支付方式设置</h4>
+                    <p className="text-[#8B7355] text-sm mb-4">上传收款二维码，用户下单时可选择支付方式</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-[#FFD700] text-sm mb-2">微信支付二维码</label>
+                        <input type="file" ref={wechatPayInputRef} accept="image/*" onChange={handleWechatPayUpload} className="hidden" />
+                        <div onClick={() => wechatPayInputRef.current?.click()} className="border-2 border-dashed border-[#3D3D3D] rounded-xl p-4 text-center hover:border-[#07C160] cursor-pointer mb-3">
+                          {wechatPayPreview ? (
+                            <div className="relative inline-block">
+                              <img src={wechatPayPreview} alt="微信支付" className="w-32 h-32 object-contain mx-auto" />
+                              <div className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center cursor-pointer" onClick={(e) => { e.stopPropagation(); setWechatPayPreview(''); setFormData(d => ({...d, wechatPay: ''})); }}>×</div>
+                            </div>
+                          ) : (
+                            <div className="py-4">
+                              <div className="text-3xl mb-2">💚</div>
+                              <div className="text-[#07C160]">点击上传微信收款码</div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[#FFD700] text-sm mb-2">支付宝收款二维码</label>
+                        <input type="file" ref={alipayInputRef} accept="image/*" onChange={handleAlipayUpload} className="hidden" />
+                        <div onClick={() => alipayInputRef.current?.click()} className="border-2 border-dashed border-[#3D3D3D] rounded-xl p-4 text-center hover:border-[#1677FF] cursor-pointer mb-3">
+                          {alipayPreview ? (
+                            <div className="relative inline-block">
+                              <img src={alipayPreview} alt="支付宝" className="w-32 h-32 object-contain mx-auto" />
+                              <div className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center cursor-pointer" onClick={(e) => { e.stopPropagation(); setAlipayPreview(''); setFormData(d => ({...d, alipay: ''})); }}>×</div>
+                            </div>
+                          ) : (
+                            <div className="py-4">
+                              <div className="text-3xl mb-2">💙</div>
+                              <div className="text-[#1677FF]">点击上传支付宝收款码</div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                   {saveStatus && <div className={`p-3 rounded-lg text-center ${saveStatus.includes('成功') ? 'bg-green-500/20 text-green-400' : saveStatus.includes('⚠') ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'}`}>{saveStatus}</div>}
                   <div className="flex gap-4">
                     <button onClick={handleSave} disabled={saving} className="flex-1 h-12 bg-gradient-to-r from-[#FFD700] to-[#D4AF37] text-[#0D0D0D] rounded-lg font-bold disabled:opacity-50">{saving ? '保存中...' : '保存修改'}</button>
-                    <button onClick={() => { setFormData({ name: '', category: '', description: '', price: '', rating: '', images: [], videos: [], address: '', phone: '' }); setImagePreviews([]); setVideoPreviews([]); }} className="px-6 h-12 bg-[#1F1F1F] border border-[#3D3D3D] text-[#C9A227] rounded-lg">清空</button>
+                    <button onClick={() => { setFormData({ name: '', category: '', description: '', price: '', rating: '', images: [], videos: [], address: '', phone: '', wechatPay: '', alipay: '' }); setImagePreviews([]); setVideoPreviews([]); setWechatPayPreview(''); setAlipayPreview(''); }} className="px-6 h-12 bg-[#1F1F1F] border border-[#3D3D3D] text-[#C9A227] rounded-lg">清空</button>
                   </div>
                 </div>
               </div>
@@ -337,7 +414,7 @@ export default function AdminDashboard() {
               <div className="divide-y divide-[#2D2D2D]">
                 {existingItems.map(item => (
                   <div key={item.id} className="p-4 flex items-center gap-4">
-                    <div className="flex-1"><h4 className="text-[#FFD700] font-bold">{item.data.name}</h4><p className="text-[#8B7355] text-sm">{item.data.description || '暂无'}</p><div className="flex gap-2 mt-2">{item.data.images?.length > 0 && <span className="text-xs bg-[#FFD700]/20 text-[#FFD700] px-2 rounded">📷 {item.data.images.length}</span>}{item.data.videos?.length > 0 && <span className="text-xs bg-[#FFD700]/20 text-[#FFD700] px-2 rounded">🎬 {item.data.videos.length}</span>}</div></div>
+                    <div className="flex-1"><h4 className="text-[#FFD700] font-bold">{item.data.name}</h4><p className="text-[#8B7355] text-sm">{item.data.description || '暂无'}</p><div className="flex gap-2 mt-2">{item.data.images?.length > 0 && <span className="text-xs bg-[#FFD700]/20 text-[#FFD700] px-2 rounded">📷 {item.data.images.length}</span>}{item.data.videos?.length > 0 && <span className="text-xs bg-[#FFD700]/20 text-[#FFD700] px-2 rounded">🎬 {item.data.videos.length}</span>}{item.data.wechatPay && <span className="text-xs bg-[#07C160]/20 text-[#07C160] px-2 rounded">💚 微信</span>}{item.data.alipay && <span className="text-xs bg-[#1677FF]/20 text-[#1677FF] px-2 rounded">💙 支付宝</span>}</div></div>
                     <div className="flex gap-2"><button onClick={() => editItem(item)} className="px-3 py-1 bg-[#FFD700] text-[#0D0D0D] rounded text-sm">编辑</button><button onClick={() => deleteItem(item.id)} className="px-3 py-1 bg-red-500 text-white rounded text-sm">删除</button></div>
                   </div>
                 ))}
