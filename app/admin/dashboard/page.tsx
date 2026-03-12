@@ -18,10 +18,16 @@ interface FormData {
   description: string;
   price: string;
   rating: string;
-  image: string;
-  video: string;
+  images: string[];
+  videos: string[];
   address: string;
   phone: string;
+}
+
+interface SavedItem {
+  id: string;
+  data: FormData;
+  timestamp: string;
 }
 
 export default function AdminDashboard() {
@@ -34,17 +40,25 @@ export default function AdminDashboard() {
     description: '',
     price: '',
     rating: '',
-    image: '',
-    video: '',
+    images: [],
+    videos: [],
     address: '',
     phone: '',
   });
-  const [imagePreview, setImagePreview] = useState<string>('');
-  const [videoPreview, setVideoPreview] = useState<string>('');
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [videoPreviews, setVideoPreviews] = useState<string[]>([]);
   const [saveStatus, setSaveStatus] = useState<string>('');
   const [saving, setSaving] = useState(false);
+  const [existingItems, setExistingItems] = useState<SavedItem[]>([]);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
+
+  // Load existing items when module changes
+  useEffect(() => {
+    const allData = JSON.parse(localStorage.getItem('adminData') || '{}');
+    const moduleData = allData[activeModule] || [];
+    setExistingItems(moduleData);
+  }, [activeModule]);
 
   useEffect(() => {
     const auth = localStorage.getItem('adminAuth');
@@ -79,36 +93,84 @@ export default function AdminDashboard() {
     router.push('/admin');
   };
 
-  // Handle image upload
+  // Handle multiple image upload
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64 = reader.result as string;
-        setImagePreview(base64);
-        setFormData({ ...formData, image: base64 });
-      };
-      reader.readAsDataURL(file);
+    const files = e.target.files;
+    if (files) {
+      const newImages: string[] = [];
+      let loaded = 0;
+      
+      Array.from(files).forEach((file) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          newImages.push(reader.result as string);
+          loaded++;
+          if (loaded === files.length) {
+            setImagePreviews([...imagePreviews, ...newImages]);
+            setFormData({ ...formData, images: [...formData.images, ...newImages] });
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+    // Reset input
+    if (imageInputRef.current) {
+      imageInputRef.current.value = '';
     }
   };
 
-  // Handle video upload
+  // Handle multiple video upload
   const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 50 * 1024 * 1024) {
-        alert('视频文件不能超过50MB');
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64 = reader.result as string;
-        setVideoPreview(base64);
-        setFormData({ ...formData, video: base64 });
-      };
-      reader.readAsDataURL(file);
+    const files = e.target.files;
+    if (files) {
+      const newVideos: string[] = [];
+      let loaded = 0;
+      
+      Array.from(files).forEach((file) => {
+        if (file.size > 50 * 1024 * 1024) {
+          alert(`视频 ${file.name} 超过50MB，跳过`);
+          loaded++;
+          if (loaded === files.length) {
+            if (newVideos.length > 0) {
+              setVideoPreviews([...videoPreviews, ...newVideos]);
+              setFormData({ ...formData, videos: [...formData.videos, ...newVideos] });
+            }
+          }
+          return;
+        }
+        
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          newVideos.push(reader.result as string);
+          loaded++;
+          if (loaded === files.length) {
+            if (newVideos.length > 0) {
+              setVideoPreviews([...videoPreviews, ...newVideos]);
+              setFormData({ ...formData, videos: [...formData.videos, ...newVideos] });
+            }
+          }
+        };
+        reader.readAsDataURL(file);
+      });
     }
+    // Reset input
+    if (videoInputRef.current) {
+      videoInputRef.current.value = '';
+    }
+  };
+
+  // Remove image
+  const removeImage = (index: number) => {
+    const newImages = imagePreviews.filter((_, i) => i !== index);
+    setImagePreviews(newImages);
+    setFormData({ ...formData, images: newImages });
+  };
+
+  // Remove video
+  const removeVideo = (index: number) => {
+    const newVideos = videoPreviews.filter((_, i) => i !== index);
+    setVideoPreviews(newVideos);
+    setFormData({ ...formData, videos: newVideos });
   };
 
   // Handle form input
@@ -117,32 +179,77 @@ export default function AdminDashboard() {
     setFormData({ ...formData, [name]: value });
   };
 
+  // Delete item
+  const deleteItem = (id: string) => {
+    if (!confirm('确定要删除这条记录吗？')) return;
+    
+    const allData = JSON.parse(localStorage.getItem('adminData') || '{}');
+    const moduleData = allData[activeModule] || [];
+    const updated = moduleData.filter((item: SavedItem) => item.id !== id);
+    allData[activeModule] = updated;
+    localStorage.setItem('adminData', JSON.stringify(allData));
+    setExistingItems(updated);
+  };
+
   // Save data
   const handleSave = async () => {
+    if (!formData.name) {
+      setSaveStatus('请填写项目名称');
+      setTimeout(() => setSaveStatus(''), 3000);
+      return;
+    }
+
     setSaving(true);
     setSaveStatus('');
 
-    // 保存到 localStorage
-    const saveData = {
-      module: activeModule,
+    const saveData: SavedItem = {
+      id: Date.now().toString(),
       data: formData,
       timestamp: new Date().toISOString(),
     };
 
-    // 获取现有数据
-    const existingData = JSON.parse(localStorage.getItem('adminData') || '{}');
-    existingData[activeModule] = existingData[activeModule] || [];
-    existingData[activeModule].push(saveData);
+    // Get existing data
+    const allData = JSON.parse(localStorage.getItem('adminData') || '{}');
+    const moduleData = allData[activeModule] || [];
+    moduleData.push(saveData);
+    allData[activeModule] = moduleData;
     
-    localStorage.setItem('adminData', JSON.stringify(existingData));
+    localStorage.setItem('adminData', JSON.stringify(allData));
+    
+    // Also save to a public key that can be read by frontend
+    localStorage.setItem('publicData', JSON.stringify(allData));
 
-    // 模拟保存延迟
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     setSaveStatus('保存成功！');
     setSaving(false);
+    
+    // Reset form
+    setFormData({
+      name: '',
+      category: '',
+      description: '',
+      price: '',
+      rating: '',
+      images: [],
+      videos: [],
+      address: '',
+      phone: '',
+    });
+    setImagePreviews([]);
+    setVideoPreviews([]);
+    
+    // Refresh list
+    setExistingItems(moduleData);
 
     setTimeout(() => setSaveStatus(''), 3000);
+  };
+
+  // Edit existing item
+  const editItem = (item: SavedItem) => {
+    setFormData(item.data);
+    setImagePreviews(item.data.images || []);
+    setVideoPreviews(item.data.videos || []);
   };
 
   if (!isAuthenticated) {
@@ -289,73 +396,73 @@ export default function AdminDashboard() {
                   </div>
 
                   <div>
-                    <label className="block text-[#FFD700] text-sm font-medium mb-2 font-art">图片上传</label>
+                    <label className="block text-[#FFD700] text-sm font-medium mb-2 font-art">图片上传（可多选）</label>
                     <input
                       type="file"
                       ref={imageInputRef}
                       accept="image/*"
+                      multiple
                       onChange={handleImageUpload}
                       className="hidden"
                     />
-                    {imagePreview ? (
-                      <div className="relative">
-                        <img src={imagePreview} alt="预览" className="w-full h-48 object-cover rounded-xl" />
-                        <button
-                          onClick={() => {
-                            setImagePreview('');
-                            setFormData({ ...formData, image: '' });
-                          }}
-                          className="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ) : (
-                      <div 
-                        onClick={() => imageInputRef.current?.click()}
-                        className="border-2 border-dashed border-[#3D3D3D] rounded-xl p-8 text-center hover:border-[#FFD700] transition-colors cursor-pointer"
-                      >
-                        <svg className="w-12 h-12 mx-auto text-[#8B7355] mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        <p className="text-[#8B7355]">点击上传图片</p>
-                        <p className="text-[#8B7355] text-xs mt-1">支持 JPG、PNG 格式</p>
+                    <div 
+                      onClick={() => imageInputRef.current?.click()}
+                      className="border-2 border-dashed border-[#3D3D3D] rounded-xl p-4 text-center hover:border-[#FFD700] transition-colors cursor-pointer mb-3"
+                    >
+                      <svg className="w-8 h-8 mx-auto text-[#8B7355] mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      <p className="text-[#8B7355] text-sm">点击选择图片（可多选）</p>
+                    </div>
+                    {imagePreviews.length > 0 && (
+                      <div className="grid grid-cols-3 gap-2">
+                        {imagePreviews.map((img, index) => (
+                          <div key={index} className="relative">
+                            <img src={img} alt={`图片${index + 1}`} className="w-full h-24 object-cover rounded-lg" />
+                            <button
+                              onClick={() => removeImage(index)}
+                              className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-sm hover:bg-red-600"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
 
                   <div>
-                    <label className="block text-[#FFD700] text-sm font-medium mb-2 font-art">视频上传</label>
+                    <label className="block text-[#FFD700] text-sm font-medium mb-2 font-art">视频上传（可多选，最大50MB/个）</label>
                     <input
                       type="file"
                       ref={videoInputRef}
                       accept="video/*"
+                      multiple
                       onChange={handleVideoUpload}
                       className="hidden"
                     />
-                    {videoPreview ? (
-                      <div className="relative">
-                        <video src={videoPreview} controls className="w-full h-48 object-cover rounded-xl" />
-                        <button
-                          onClick={() => {
-                            setVideoPreview('');
-                            setFormData({ ...formData, video: '' });
-                          }}
-                          className="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ) : (
-                      <div 
-                        onClick={() => videoInputRef.current?.click()}
-                        className="border-2 border-dashed border-[#3D3D3D] rounded-xl p-8 text-center hover:border-[#FFD700] transition-colors cursor-pointer"
-                      >
-                        <svg className="w-12 h-12 mx-auto text-[#8B7355] mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                        </svg>
-                        <p className="text-[#8B7355]">点击上传视频</p>
-                        <p className="text-[#8B7355] text-xs mt-1">支持 MP4、WebM 格式（最大50MB）</p>
+                    <div 
+                      onClick={() => videoInputRef.current?.click()}
+                      className="border-2 border-dashed border-[#3D3D3D] rounded-xl p-4 text-center hover:border-[#FFD700] transition-colors cursor-pointer mb-3"
+                    >
+                      <svg className="w-8 h-8 mx-auto text-[#8B7355] mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      <p className="text-[#8B7355] text-sm">点击选择视频（可多选）</p>
+                    </div>
+                    {videoPreviews.length > 0 && (
+                      <div className="grid grid-cols-2 gap-2">
+                        {videoPreviews.map((video, index) => (
+                          <div key={index} className="relative">
+                            <video src={video} className="w-full h-24 object-cover rounded-lg" />
+                            <button
+                              onClick={() => removeVideo(index)}
+                              className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-sm hover:bg-red-600"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
@@ -398,14 +505,78 @@ export default function AdminDashboard() {
                     >
                       {saving ? '保存中...' : '保存修改'}
                     </button>
-                    <button className="px-6 h-12 bg-[#1F1F1F] border border-[#3D3D3D] text-[#C9A227] rounded-lg font-bold hover:bg-[#2D2D2D] transition-all font-art">
-                      预览
+                    <button 
+                      onClick={() => {
+                        setFormData({
+                          name: '',
+                          category: '',
+                          description: '',
+                          price: '',
+                          rating: '',
+                          images: [],
+                          videos: [],
+                          address: '',
+                          phone: '',
+                        });
+                        setImagePreviews([]);
+                        setVideoPreviews([]);
+                      }}
+                      className="px-6 h-12 bg-[#1F1F1F] border border-[#3D3D3D] text-[#C9A227] rounded-lg font-bold hover:bg-[#2D2D2D] transition-all font-art"
+                    >
+                      清空
                     </button>
                   </div>
                 </div>
               </div>
             ))}
           </div>
+
+          {/* Existing Items List */}
+          {existingItems.length > 0 && (
+            <div className="mt-8 bg-[#141414] rounded-2xl border border-[#2D2D2D] overflow-hidden">
+              <div className="p-6 border-b border-[#2D2D2D]">
+                <h3 className="text-xl font-bold text-[#FFD700] font-art">已发布的内容</h3>
+                <p className="text-[#8B7355] text-sm mt-1">共 {existingItems.length} 条记录</p>
+              </div>
+              <div className="divide-y divide-[#2D2D2D]">
+                {existingItems.map((item) => (
+                  <div key={item.id} className="p-4 flex items-center gap-4 hover:bg-[#1F1F1F] transition-colors">
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-[#FFD700] font-bold truncate">{item.data.name}</h4>
+                      <p className="text-[#8B7355] text-sm truncate">{item.data.description || '暂无描述'}</p>
+                      <div className="flex gap-2 mt-2">
+                        {item.data.images?.length > 0 && (
+                          <span className="text-xs bg-[#FFD700]/20 text-[#FFD700] px-2 py-1 rounded">
+                            📷 {item.data.images.length}张图片
+                          </span>
+                        )}
+                        {item.data.videos?.length > 0 && (
+                          <span className="text-xs bg-[#FFD700]/20 text-[#FFD700] px-2 py-1 rounded">
+                            🎬 {item.data.videos.length}个视频
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => editItem(item)}
+                        className="px-3 py-1 bg-[#FFD700] text-[#0D0D0D] rounded text-sm font-bold hover:shadow-[0_0_10px_rgba(255,215,0,0.4)] transition-all"
+                      >
+                        编辑
+                      </button>
+                      <button 
+                        onClick={() => deleteItem(item.id)}
+                        className="px-3 py-1 bg-red-500 text-white rounded text-sm font-bold hover:bg-red-600 transition-all"
+                      >
+                        删除
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
         </div>
 
         {/* Future Integration */}

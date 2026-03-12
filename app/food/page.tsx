@@ -1,11 +1,57 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { foodData, categories } from '@/lib/data';
+
+interface AdminItem {
+  id: string;
+  data: {
+    name: string;
+    category: string;
+    description: string;
+    price: string;
+    rating: string;
+    images: string[];
+    videos: string[];
+    address: string;
+    phone: string;
+  };
+  timestamp: string;
+}
 
 export default function FoodPage() {
   const category = categories[0];
   const categories_list = ['全部', '潮汕菜', '火锅', '烧烤', '小吃', '甜品', '快餐'];
+  const [adminData, setAdminData] = useState<AdminItem[]>([]);
+
+  useEffect(() => {
+    // Load admin data from localStorage
+    const allData = JSON.parse(localStorage.getItem('publicData') || localStorage.getItem('adminData') || '{}');
+    const foodItems = allData['food'] || [];
+    setAdminData(foodItems);
+  }, []);
+
+  // Combine default data with admin data
+  const allFoodData = [
+    ...adminData.map((item, index) => ({
+      id: `admin-${item.id}`,
+      name: item.data.name,
+      category: item.data.category || '其他',
+      rating: parseFloat(item.data.rating) || 4.5,
+      price: item.data.price || '¥0',
+      address: item.data.address || '',
+      phone: item.data.phone || '',
+      image: item.data.images?.[0] || 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800',
+      images: item.data.images || [],
+      videos: item.data.videos || [],
+      tags: item.data.description ? [item.data.description.slice(0, 20)] : [],
+      description: item.data.description || '',
+      hours: '待定',
+      isAdminAdded: true,
+    })),
+    ...foodData.map(item => ({ ...item, isAdminAdded: false })),
+  ];
 
   return (
     <div className="min-h-screen bg-[#0A0A0A]">
@@ -40,11 +86,16 @@ export default function FoodPage() {
 
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 py-8">
+        {adminData.length > 0 && (
+          <div className="mb-4 p-3 bg-[#FFD700]/10 border border-[#FFD700]/30 rounded-xl">
+            <span className="text-[#FFD700] text-sm">后台新增了 {adminData.length} 条内容</span>
+          </div>
+        )}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {foodData.map((item) => (
+          {allFoodData.map((item: any) => (
             <Link
               key={item.id}
-              href={`/food/${item.id}`}
+              href={item.isAdminAdded ? `/food/admin-${item.id}` : `/food/${item.id}`}
               className="group bg-[#141414] rounded-2xl overflow-hidden shadow-sm hover:shadow-[0_0_20px_rgba(255,215,0,0.15)] transition-all duration-300 border border-[#2D2D2D]"
             >
               <div className="relative h-56 overflow-hidden">
@@ -56,6 +107,11 @@ export default function FoodPage() {
                 <div className="absolute top-3 right-3 px-3 py-1 bg-[#FFD700] text-[#0D0D0D] text-xs font-bold rounded-full">
                   {item.category}
                 </div>
+                {item.isAdminAdded && (
+                  <div className="absolute top-3 left-3 px-2 py-1 bg-[#E91E63] text-white text-xs font-bold rounded-full">
+                    新增
+                  </div>
+                )}
               </div>
               <div className="p-5">
                 <h3 className="font-bold text-lg text-[#FFD700] mb-2 group-hover:text-[#FFE44D] transition-colors">
@@ -64,7 +120,7 @@ export default function FoodPage() {
                 <p className="text-sm text-[#8B7355] mb-3 line-clamp-2">{item.description}</p>
                 
                 <div className="flex flex-wrap gap-2 mb-3">
-                  {item.tags.slice(0, 3).map((tag) => (
+                  {item.tags?.slice(0, 3).map((tag: string) => (
                     <span key={tag} className="px-2 py-1 bg-[#1F1F1F] text-[#FFD700] text-xs rounded border border-[#3D3D3D]">
                       {tag}
                     </span>
