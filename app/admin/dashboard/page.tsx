@@ -215,7 +215,15 @@ export default function AdminDashboard() {
     }
 
     setSaving(true);
-    setSaveStatus('');
+    setSaveStatus('正在保存...');
+
+    // Check data size (localStorage limit is ~5MB)
+    const dataSize = JSON.stringify(formData).length;
+    if (dataSize > 4000000) {
+      setSaveStatus('数据过大，请减少图片或视频数量');
+      setSaving(false);
+      return;
+    }
 
     // Get current module name
     const currentModule = modules.find(m => m.id === activeModule);
@@ -229,42 +237,47 @@ export default function AdminDashboard() {
       timestamp: new Date().toISOString(),
     };
 
-    // Get existing data
-    const allData = JSON.parse(localStorage.getItem('adminData') || '{}');
-    const moduleData = allData[activeModule] || [];
-    moduleData.push(saveData);
-    allData[activeModule] = moduleData;
-    
-    localStorage.setItem('adminData', JSON.stringify(allData));
-    
-    // Also save to a public key that can be read by frontend
-    localStorage.setItem('publicData', JSON.stringify(allData));
-    
-    // Dispatch custom event to notify other pages
-    window.dispatchEvent(new Event('adminDataUpdate'));
+    try {
+      // Get existing data
+      const existingAllData = localStorage.getItem('adminData') || '{}';
+      const allData = JSON.parse(existingAllData);
+      const moduleData = allData[activeModule] || [];
+      moduleData.push(saveData);
+      allData[activeModule] = moduleData;
+      
+      localStorage.setItem('adminData', JSON.stringify(allData));
+      localStorage.setItem('publicData', JSON.stringify(allData));
+      
+      // Dispatch custom event to notify other pages
+      window.dispatchEvent(new Event('adminDataUpdate'));
 
-    await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-    setSaveStatus('保存成功！');
-    setSaving(false);
-    
-    // Reset form
-    setFormData({
-      name: '',
-      category: '',
-      description: '',
-      price: '',
-      rating: '',
-      images: [],
-      videos: [],
-      address: '',
-      phone: '',
-    });
-    setImagePreviews([]);
-    setVideoPreviews([]);
-    
-    // Refresh list
-    setExistingItems(moduleData);
+      setSaveStatus('保存成功！');
+      setSaving(false);
+      
+      // Reset form
+      setFormData({
+        name: '',
+        category: '',
+        description: '',
+        price: '',
+        rating: '',
+        images: [],
+        videos: [],
+        address: '',
+        phone: '',
+      });
+      setImagePreviews([]);
+      setVideoPreviews([]);
+      
+      // Refresh list
+      setExistingItems(moduleData);
+    } catch (error) {
+      console.error('Save error:', error);
+      setSaveStatus('保存失败，请检查数据大小');
+      setSaving(false);
+    }
 
     setTimeout(() => setSaveStatus(''), 3000);
   };

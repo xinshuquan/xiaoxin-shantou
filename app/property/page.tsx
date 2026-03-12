@@ -1,11 +1,75 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { propertyData, categories } from '@/lib/data';
+
+interface AdminItem {
+  id: string;
+  data: {
+    name: string;
+    category: string;
+    description: string;
+    price: string;
+    rating: string;
+    images: string[];
+    videos: string[];
+    address: string;
+    phone: string;
+    moduleName: string;
+  };
+  timestamp: string;
+}
 
 export default function PropertyPage() {
   const category = categories[4];
   const categories_list = ['全部', '新房', '二手房', '租房', '商铺', '写字楼'];
+  const [adminData, setAdminData] = useState<AdminItem[]>([]);
+  const [isClient, setIsClient] = useState(false);
+
+  const loadData = () => {
+    try {
+      const allData = JSON.parse(localStorage.getItem('adminData') || '{}');
+      const propertyItems = allData['property'] || [];
+      setAdminData(propertyItems);
+      setIsClient(true);
+    } catch (e) {
+      console.error('Error loading data:', e);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+    
+    const handleDataUpdate = () => loadData();
+    const interval = setInterval(loadData, 2000);
+    
+    window.addEventListener('adminDataUpdate', handleDataUpdate);
+    
+    return () => {
+      window.removeEventListener('adminDataUpdate', handleDataUpdate);
+      clearInterval(interval);
+    };
+  }, []);
+
+  const allPropertyData = [
+    ...adminData.map((item) => ({
+      id: `admin-${item.id}`,
+      name: item.data.name,
+      category: item.data.category || '房产',
+      rating: parseFloat(item.data.rating) || 4.5,
+      price: item.data.price || '¥0/㎡',
+      address: item.data.address || '',
+      phone: item.data.phone || '',
+      image: item.data.images && item.data.images.length > 0 ? item.data.images[0] : 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800',
+      images: item.data.images || [],
+      videos: item.data.videos || [],
+      description: item.data.description || '',
+      hours: '09:00-18:00',
+      isAdminAdded: true,
+    })),
+    ...propertyData.map(item => ({ ...item, isAdminAdded: false })),
+  ];
 
   return (
     <div className="min-h-screen bg-[#FFFDF7]">
@@ -30,12 +94,23 @@ export default function PropertyPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
+        {isClient && adminData.length > 0 && (
+          <div className="mb-4 p-3 bg-[#E67E22]/10 border border-[#E67E22]/30 rounded-xl">
+            <span className="text-[#E67E22] text-sm">后台新增了 {adminData.length} 条内容</span>
+          </div>
+        )}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {propertyData.map((item) => (
-            <Link key={item.id} href={`/property/${item.id}`} className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300">
+          {allPropertyData.map((item: any) => (
+            <Link key={item.id} href={item.isAdminAdded ? `/property/admin-${item.id}` : `/property/${item.id}`} className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300">
               <div className="relative h-56 overflow-hidden">
-                <img src={item.image} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                <img src={item.image} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" onError={(e) => {(e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800';}} />
                 <div className="absolute top-3 right-3 px-3 py-1 bg-[#E67E22] text-white text-xs rounded-full">{item.category}</div>
+                {item.isAdminAdded && (
+                  <div className="absolute top-3 left-3 px-2 py-1 bg-[#E91E63] text-white text-xs font-bold rounded-full">新增</div>
+                )}
+                {item.images && item.images.length > 1 && (
+                  <div className="absolute bottom-3 right-3 px-2 py-1 bg-black/60 text-white text-xs rounded-full">📷 {item.images.length}</div>
+                )}
               </div>
               <div className="p-5">
                 <h3 className="font-bold text-lg text-[#2D3436] mb-2 group-hover:text-[#E67E22] transition-colors">{item.name}</h3>
